@@ -10,6 +10,8 @@ export default tseslint.config(
       'node_modules/**',
       'dist/**',
       'coverage/**',
+      // Standalone dev validation harness (Node script, not shipped code).
+      'validation/**',
     ],
   },
   js.configs.recommended,
