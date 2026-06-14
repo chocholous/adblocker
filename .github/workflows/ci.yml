@@ -37,7 +37,7 @@ jobs:
         run: npm run build
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chrome-mv3
           path: .output/chrome-mv3
@@ -47,7 +47,7 @@ jobs:
         run: npm run zip
 
       - name: Upload zip artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: extension-zip
           path: .output/*.zip
