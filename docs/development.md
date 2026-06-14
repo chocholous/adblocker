@@ -38,6 +38,21 @@ npm install
 that CI enforces on every push and PR. See [`gates.md`](gates.md) for the gate
 policy, the test layers, and the pre-release manual/user-testing gates.
 
+## Releasing
+
+Releases are automated by [`.github/workflows/release.yml`](../.github/workflows/release.yml),
+triggered by pushing a `v*` tag:
+
+```bash
+npm version patch          # bumps package.json + creates the vX.Y.Z tag
+git push --follow-tags
+```
+
+The workflow runs the full gate, packages the Chrome/Edge zip (`npm run zip`),
+and publishes a GitHub Release with the zip attached and auto-generated notes.
+Store submission (Chrome Web Store / Edge Add-ons) remains a manual step;
+Firefox is out of scope for now.
+
 ## Load the unpacked extension
 
 1. `npm run build`
