@@ -1,0 +1,40 @@
+name: Release
+
+# Cut a release by pushing a version tag, e.g.:
+#   npm version patch && git push --follow-tags
+# Builds, runs the full gate, packages the Chrome/Edge zip, and publishes a
+# GitHub Release with the zip attached. Firefox is out of scope for now.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Same quality bar as PR CI before anything is published.
+      - name: Gate (format, lint, types, tests, build)
+        run: npm run gate
+
+      - name: Package (chrome/edge zip)
+        run: npm run zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .output/*.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true
