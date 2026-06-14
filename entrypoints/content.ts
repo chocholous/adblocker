@@ -1,6 +1,6 @@
-import { defineContentScript } from 'wxt/sandbox';
+import { defineContentScript } from 'wxt/utils/define-content-script';
 import { browser } from 'wxt/browser';
-import { settingsItem } from '@/lib/settings';
+import { settingsItem, type HiderSettings } from '@/lib/settings';
 import { createHider } from '@/lib/hider';
 import { buildPageDigest } from '@/lib/digest';
 import type {
@@ -69,7 +69,7 @@ export default defineContentScript({
       const hider = createHider(settings);
       hider.injectStyles();
       hider.startObserver();
-      settingsItem.watch((next) => hider.update(next));
+      settingsItem.watch((next: HiderSettings) => hider.update(next));
     }
 
     // Popup-triggered commands. Cleanup runs only in the top frame.

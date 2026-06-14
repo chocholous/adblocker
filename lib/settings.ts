@@ -1,4 +1,4 @@
-import { storage } from 'wxt/storage';
+import { storage } from 'wxt/utils/storage';
 
 /**
  * User-configurable filtering settings, persisted in chrome.storage.sync so they
