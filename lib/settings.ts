@@ -17,12 +17,43 @@ export interface HiderSettings {
 
 export const DEFAULT_SETTINGS: HiderSettings = {
   enabled: true,
+  // Curated generic selectors validated against a real-site vision study (CNN,
+  // Healthline, TechRadar, Tom's Hardware, BoredPanda, FoodNetwork). Only the
+  // precise/token forms below are used: broad `[class*="ad"]` / `[id*="ad"]`
+  // matchers were proven to destroy real content (e.g. CNN `header__*`,
+  // FoodNetwork hero) and are intentionally excluded.
   hideSelectors: [
+    // Pre-existing defaults.
     '[data-ad]',
     '[id*="sponsored" i]',
     '[class*="sponsored" i]',
     '.newsletter-wall',
     '.cookie-banner',
+    // Generic ad markers (GPT / AdSense / DoubleClick).
+    '[aria-label="advertisement" i]',
+    'iframe[id^="google_ads_iframe"]',
+    '[id^="div-gpt-ad"]',
+    '[data-google-query-id]',
+    'ins.adsbygoogle',
+    'iframe[src*="doubleclick" i]',
+    'iframe[src*="googlesyndication" i]',
+    // Native-ad networks.
+    '[id*="taboola" i]',
+    '[class*="taboola" i]',
+    '[id*="outbrain" i]',
+    '[class*="outbrain" i]',
+    // Precise ad-slot tokens (no broad `ad` substring match).
+    '[class~="ads"]',
+    '[class*="ad-slot" i]',
+    '[class*="ad-unit" i]',
+    '[class*="ad-container" i]',
+    // OneTrust consent banner.
+    '#onetrust-banner-sdk',
+    '#onetrust-consent-sdk',
+    '.onetrust-pc-dark-filter',
+    // Newsletter prompts.
+    '[class*="newsletter" i]',
+    '[id*="newsletter" i]',
   ],
   removeSelectors: [],
   spoofAntiAdblock: true,
