@@ -24,3 +24,6 @@ playwright-report/
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+# Claude Code local dir (settings, agent worktrees) — never versioned
+.claude/
