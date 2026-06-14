@@ -54,6 +54,8 @@ export const DEFAULT_SETTINGS: HiderSettings = {
     '[class*="ad-slot" i]',
     '[class*="ad-unit" i]',
     '[class*="ad-container" i]',
+    // Seznam SSP / Sklik ad slots (seznam.cz, novinky.cz, sport.cz …).
+    '[class*="ssp-advert" i]',
     // OneTrust consent banner.
     '#onetrust-banner-sdk',
     '#onetrust-consent-sdk',
