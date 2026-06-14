@@ -1,4 +1,10 @@
-import { settingsItem, apiKeyItem, type HiderSettings } from '@/lib/settings';
+import {
+  settingsItem,
+  apiKeyItem,
+  serializeSettings,
+  parseSettings,
+  type HiderSettings,
+} from '@/lib/settings';
 import { browser } from 'wxt/browser';
 import type { CleanupResult, DetectedRule } from '@/lib/detect';
 
@@ -11,8 +17,14 @@ const $ = <T extends HTMLElement>(id: string): T => {
 const enabled = $<HTMLInputElement>('enabled');
 const hideSelectors = $<HTMLTextAreaElement>('hideSelectors');
 const removeSelectors = $<HTMLTextAreaElement>('removeSelectors');
+const cosmeticFilters = $<HTMLTextAreaElement>('cosmeticFilters');
 const spoofAntiAdblock = $<HTMLInputElement>('spoofAntiAdblock');
 const status = $<HTMLSpanElement>('status');
+
+const exportBtn = $<HTMLButtonElement>('export');
+const importBtn = $<HTMLButtonElement>('import');
+const ioText = $<HTMLTextAreaElement>('ioText');
+const ioStatus = $<HTMLSpanElement>('ioStatus');
 
 const apiKey = $<HTMLInputElement>('apiKey');
 const cleanup = $<HTMLButtonElement>('cleanup');
@@ -35,6 +47,7 @@ async function load(): Promise<void> {
   enabled.checked = s.enabled;
   hideSelectors.value = s.hideSelectors.join('\n');
   removeSelectors.value = s.removeSelectors.join('\n');
+  cosmeticFilters.value = s.cosmeticFilters;
   spoofAntiAdblock.checked = s.spoofAntiAdblock;
   apiKey.value = await apiKeyItem.getValue();
 }
@@ -44,6 +57,9 @@ async function save(): Promise<void> {
     enabled: enabled.checked,
     hideSelectors: linesToList(hideSelectors.value),
     removeSelectors: linesToList(removeSelectors.value),
+    // Cosmetic filters keep their raw text verbatim (one rule per line);
+    // trimming/blank-line removal happens at parse time, not on save.
+    cosmeticFilters: cosmeticFilters.value,
     spoofAntiAdblock: spoofAntiAdblock.checked,
   };
   await settingsItem.setValue(next);
@@ -56,6 +72,45 @@ apiKey.addEventListener(
   'change',
   () => void apiKeyItem.setValue(apiKey.value.trim()),
 );
+
+/* ---------- import / export ---------- */
+
+/**
+ * Export the full current settings as JSON into the I/O textarea and copy it to
+ * the clipboard when available. Reads from storage (not the form) so an export
+ * reflects the persisted state, making the round-trip authoritative.
+ */
+async function exportSettings(): Promise<void> {
+  const json = serializeSettings(await settingsItem.getValue());
+  ioText.value = json;
+  try {
+    await navigator.clipboard.writeText(json);
+    ioStatus.textContent = 'Exported (copied to clipboard).';
+  } catch {
+    ioStatus.textContent = 'Exported.';
+  }
+}
+
+/**
+ * Import settings from the I/O textarea: validate, persist via
+ * `settingsItem.setValue`, then reload the form so the new values are visible.
+ * The write is lossless — `cosmeticFilters` and every other field round-trip.
+ */
+async function importSettings(): Promise<void> {
+  try {
+    const next = parseSettings(ioText.value);
+    await settingsItem.setValue(next);
+    await load();
+    ioStatus.textContent = 'Imported.';
+  } catch (err) {
+    ioStatus.textContent = `Import failed: ${
+      err instanceof Error ? err.message : 'invalid input'
+    }`;
+  }
+}
+
+exportBtn.addEventListener('click', () => void exportSettings());
+importBtn.addEventListener('click', () => void importSettings());
 
 /* ---------- AI cleanup ---------- */
 

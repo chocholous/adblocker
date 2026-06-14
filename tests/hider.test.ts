@@ -7,6 +7,7 @@ const base: HiderSettings = {
   hideSelectors: [],
   removeSelectors: [],
   spoofAntiAdblock: false,
+  cosmeticFilters: '',
 };
 
 beforeEach(() => {
@@ -111,5 +112,112 @@ describe('createHider', () => {
     hider.update({ ...base, enabled: false, hideSelectors: ['.ad'] });
 
     expect(document.getElementById('sch-cosmetic-style')).toBeNull();
+  });
+
+  it('includes resolved cosmetic css selectors in the hide stylesheet', () => {
+    const hider = createHider(base);
+    hider.setCosmetics({ css: ['.ad-from-list'], procedural: [] });
+    hider.injectStyles();
+
+    const style = document.getElementById('sch-cosmetic-style');
+    expect(style?.textContent).toContain('.ad-from-list');
+    expect(style?.textContent).toContain('display: none');
+  });
+});
+
+describe('createHider procedural matching', () => {
+  it(':has-text hides only the element containing the text (plain CSS over-matches)', () => {
+    // Two structurally identical cards; plain `div.card` would hit BOTH, but the
+    // procedural rule must hide only the one whose text says "Sponsored".
+    document.body.innerHTML =
+      '<div class="card" id="ad">Sponsored partner content</div>' +
+      '<div class="card" id="real">Genuine editorial story</div>';
+
+    const hider = createHider(base);
+    hider.setCosmetics({
+      css: [],
+      procedural: [
+        {
+          css: 'div.card',
+          procedural: [{ type: 'has-text', arg: 'sponsored' }],
+        },
+      ],
+    });
+    hider.startObserver();
+
+    const ad = document.getElementById('ad') as HTMLElement;
+    const real = document.getElementById('real') as HTMLElement;
+    // The sponsored card is hidden; the editorial card is untouched. A single
+    // CSS selector (`div.card`) could never make this distinction.
+    expect(ad.style.display).toBe('none');
+    expect(real.style.display).toBe('');
+    // Hidden, not removed — both nodes stay in the DOM.
+    expect(ad.isConnected).toBe(true);
+    expect(real.isConnected).toBe(true);
+  });
+
+  it(':has hides an element that contains a matching descendant', () => {
+    document.body.innerHTML =
+      '<div class="box" id="withAd"><span class="adlabel">x</span></div>' +
+      '<div class="box" id="clean"><span>y</span></div>';
+
+    const hider = createHider(base);
+    hider.setCosmetics({
+      css: [],
+      procedural: [
+        { css: 'div.box', procedural: [{ type: 'has', arg: '.adlabel' }] },
+      ],
+    });
+    hider.startObserver();
+
+    expect(
+      (document.getElementById('withAd') as HTMLElement).style.display,
+    ).toBe('none');
+    expect(
+      (document.getElementById('clean') as HTMLElement).style.display,
+    ).toBe('');
+  });
+
+  it('re-evaluates procedural matches on dynamically-added nodes', async () => {
+    const hider = createHider(base);
+    hider.setCosmetics({
+      css: [],
+      procedural: [
+        {
+          css: 'div.card',
+          procedural: [{ type: 'has-text', arg: 'sponsored' }],
+        },
+      ],
+    });
+    hider.startObserver();
+
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.textContent = 'Sponsored item';
+    document.body.appendChild(el);
+
+    // MutationObserver callbacks are async (microtask) in happy-dom.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(el.style.display).toBe('none');
+  });
+
+  it('procedural hiding is idempotent across repeated sweeps', () => {
+    document.body.innerHTML = '<div class="card" id="ad">Sponsored</div>';
+    const hider = createHider(base);
+    const cosmetics = {
+      css: [],
+      procedural: [
+        {
+          css: 'div.card',
+          procedural: [{ type: 'has-text' as const, arg: 'sponsored' }],
+        },
+      ],
+    };
+    hider.setCosmetics(cosmetics);
+    // Re-applying the same cosmetics sweeps again; must stay hidden, never throw.
+    expect(() => hider.setCosmetics(cosmetics)).not.toThrow();
+    expect((document.getElementById('ad') as HTMLElement).style.display).toBe(
+      'none',
+    );
   });
 });
