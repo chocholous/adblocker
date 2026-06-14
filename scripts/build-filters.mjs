@@ -32,6 +32,12 @@ const LISTS = [
   'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt',
   'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt',
   'https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt',
+  // Regional: EasyList Czech & Slovak — covers Sklik/Seznam/iDNES/Novinky ads.
+  'https://raw.githubusercontent.com/tomasko126/easylistczechandslovak/master/filters.txt',
+  // NOTE: cookie/consent "annoyances" lists were evaluated and dropped — they
+  // introduced false-positives on clean sites (e.g. a GitHub <h1>), which
+  // violates the project's zero-false-positive bar. Consent-wall coverage is a
+  // follow-up that needs per-site rules, not broad annoyance lists.
 ];
 
 // Engine config. We enable the features the content runtime relies on:
