@@ -3,9 +3,11 @@ id: TASK-015
 title: >-
   Validated ad-blocking at scale (60 ad-heavy hidden / 30 clean no
   false-positives)
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@claude'
 created_date: '2026-06-14 16:09'
+updated_date: '2026-06-14 18:06'
 labels:
   - goal
   - engine
