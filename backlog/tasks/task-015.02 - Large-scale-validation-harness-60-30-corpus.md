@@ -1,9 +1,11 @@
 ---
 id: TASK-015.02
 title: Large-scale validation harness + 60/30 corpus
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@claude'
 created_date: '2026-06-14 16:09'
+updated_date: '2026-06-14 17:38'
 labels:
   - testing
 dependencies: []
