@@ -36,6 +36,19 @@
         ></textarea>
       </label>
 
+      <label class="field">
+        <span
+          >Cosmetic filters
+          <small>(uBO/EasyList, per-site &amp; procedural)</small></span
+        >
+        <textarea
+          id="cosmeticFilters"
+          rows="4"
+          spellcheck="false"
+          placeholder="example.com##.banner&#10;example.com##div.card:has-text(Sponsored)"
+        ></textarea>
+      </label>
+
       <label class="check">
         <input type="checkbox" id="spoofAntiAdblock" />
         <span>Spoof anti-adblock detection</span>
@@ -45,6 +58,27 @@
         <button id="save" type="button">Save</button>
         <span id="status" class="status" aria-live="polite"></span>
       </footer>
+
+      <hr class="sep" />
+
+      <section class="io">
+        <span class="field"
+          ><span
+            >Backup <small>(export / import all settings)</small></span
+          ></span
+        >
+        <div class="row io-actions">
+          <button id="export" type="button" class="secondary">Export</button>
+          <button id="import" type="button" class="secondary">Import</button>
+        </div>
+        <textarea
+          id="ioText"
+          rows="4"
+          spellcheck="false"
+          placeholder="Settings JSON appears here on Export; paste JSON here then click Import."
+        ></textarea>
+        <span id="ioStatus" class="status" aria-live="polite"></span>
+      </section>
 
       <hr class="sep" />
 

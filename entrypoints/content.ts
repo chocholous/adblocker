@@ -1,7 +1,8 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { browser } from 'wxt/browser';
 import { settingsItem, type HiderSettings } from '@/lib/settings';
-import { createHider } from '@/lib/hider';
+import { createHider, type ResolvedCosmetics } from '@/lib/hider';
+import { parseCosmeticFilters, selectorsForHostname } from '@/lib/filterlist';
 import { buildPageDigest } from '@/lib/digest';
 import { serveSpoofConfig } from '@/lib/bridge';
 import type {
@@ -12,6 +13,20 @@ import type {
 import '@/assets/hider.css';
 
 const PREVIEW_STYLE_ID = 'sch-preview-style';
+
+/**
+ * Parse the raw cosmetic-filter text and resolve the selectors (plain-CSS and
+ * procedural) that apply to the current frame's hostname. Returns empty sets on
+ * any failure so a malformed filter list never breaks the page.
+ */
+function resolveCosmetics(settings: HiderSettings): ResolvedCosmetics {
+  try {
+    const ruleSet = parseCosmeticFilters(settings.cosmeticFilters);
+    return selectorsForHostname(ruleSet, location.hostname);
+  } catch {
+    return { css: [], procedural: [] };
+  }
+}
 
 /** Hide a set of selectors as a temporary, unsaved preview. */
 function applyPreview(selectors: string[]): void {
@@ -70,6 +85,8 @@ export default defineContentScript({
 
     const hider = settings.enabled ? createHider(settings) : null;
     if (hider) {
+      // Seed per-hostname cosmetic selectors before the first paint passes.
+      hider.setCosmetics(resolveCosmetics(settings));
       hider.injectStyles();
       hider.startObserver();
     }
@@ -77,6 +94,9 @@ export default defineContentScript({
     // changes, and propagate updates to the hider when active.
     settingsItem.watch((next: HiderSettings) => {
       settings = next;
+      // Re-resolve per-hostname cosmetics (the raw text may have changed), then
+      // push the new settings snapshot to the hider.
+      hider?.setCosmetics(resolveCosmetics(next));
       hider?.update(next);
     });
 
