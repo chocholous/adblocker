@@ -62,6 +62,9 @@ export const DEFAULT_SETTINGS: HiderSettings = {
     '[class*="ad-container" i]',
     // Seznam SSP / Sklik ad slots (seznam.cz, novinky.cz, sport.cz …).
     '[class*="ssp-advert" i]',
+    // CPEx subscription/consent wall (CNC sites: blesk.cz, reflex.cz …) — no
+    // reject control, so hide the whole CPEx overlay deterministically.
+    '[id^="cpexSubs" i]',
     // OneTrust consent banner.
     '#onetrust-banner-sdk',
     '#onetrust-consent-sdk',

@@ -67,7 +67,7 @@ const REJECT_TEXT_RE =
  * Used both to scope reject-clicks and to decide what is safe to hide.
  */
 const CONSENT_CONTEXT_RE =
-  /cookie|consent|cmp|gdpr|souhlas|privacy|did[oó]mi|onetrust|cybotcookiebot|truste|usercentrics|osano|klaro|qc-cmp|trustarc/i;
+  /cookie|consent|cmp|gdpr|souhlas|privacy|did[oó]mi|onetrust|cybotcookiebot|truste|usercentrics|osano|klaro|qc-cmp|trustarc|cpex/i;
 
 /** Words that, inside a dialog, strongly imply a cookie/consent banner. */
 const CONSENT_TEXT_RE =
@@ -219,7 +219,8 @@ function findConsentContainers(): Element[] {
       document.querySelectorAll(
         '[id*="cookie" i],[class*="cookie" i],[id*="consent" i],[class*="consent" i],' +
           '[id*="cmp" i],[class*="cmp" i],[id*="gdpr" i],[class*="gdpr" i],' +
-          '[class*="souhlas" i],[id*="souhlas" i],[role="dialog"],[role="alertdialog"]',
+          '[class*="souhlas" i],[id*="souhlas" i],[id*="cpex" i],[class*="cpex" i],' +
+          '[role="dialog"],[role="alertdialog"]',
       ),
     );
   } catch {

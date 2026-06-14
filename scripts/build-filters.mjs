@@ -34,10 +34,12 @@ const LISTS = [
   'https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt',
   // Regional: EasyList Czech & Slovak — covers Sklik/Seznam/iDNES/Novinky ads.
   'https://raw.githubusercontent.com/tomasko126/easylistczechandslovak/master/filters.txt',
-  // NOTE: cookie/consent "annoyances" lists were evaluated and dropped — they
-  // introduced false-positives on clean sites (e.g. a GitHub <h1>), which
-  // violates the project's zero-false-positive bar. Consent-wall coverage is a
-  // follow-up that needs per-site rules, not broad annoyance lists.
+  // Annoyances / cookie-consent / overlays (candidates — kept only while the
+  // full clean corpus stays at zero false-positives; see validation/run.mjs).
+  'https://filters.adtidy.org/extension/ublock/filters/18_optimized.txt', // AdGuard Cookie Notices
+  'https://filters.adtidy.org/extension/ublock/filters/19_optimized.txt', // AdGuard Popups
+  'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances-cookies.txt',
+  'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances-overlays.txt',
 ];
 
 // Engine config. We enable the features the content runtime relies on:
