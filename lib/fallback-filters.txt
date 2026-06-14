@@ -1,0 +1,74 @@
+! Stealth Content Hider — checked-in fallback filter list.
+!
+! Used by scripts/build-filters.mjs when the canonical lists cannot be
+! downloaded (offline / network-restricted CI), and always merged in on top of
+! the downloaded lists so these curated edge-case rules ship unconditionally.
+!
+! Keep this list small but meaningfully broader than the legacy ~20 hand-picked
+! selectors. Real EasyList/EasyPrivacy/uBO/AdGuard rules come from the network
+! build; this is a deterministic safety net, not a replacement.
+
+! ---- Network: common ad / tracking endpoints ----
+||doubleclick.net^
+||googlesyndication.com^
+||googleadservices.com^
+||google-analytics.com^
+||googletagmanager.com^
+||googletagservices.com^
+||adservice.google.com^
+||pagead2.googlesyndication.com^
+||static.doubleclick.net^
+||scorecardresearch.com^
+||quantserve.com^
+||taboola.com^
+||outbrain.com^
+||criteo.com^
+||criteo.net^
+||adnxs.com^
+||rubiconproject.com^
+||pubmatic.com^
+||casalemedia.com^
+||moatads.com^
+||amazon-adsystem.com^
+||facebook.com/tr^
+||bat.bing.com^
+||hotjar.com^
+||mixpanel.com^
+
+! ---- Cosmetic: generic ad slots / containers ----
+###ad
+###ads
+###Ads
+###banner-ad
+###ad-banner
+###ad-container
+##.ad
+##.ads
+##.adsbygoogle
+##.ad-slot
+##.ad-unit
+##.ad-banner
+##.ad-container
+##.advertisement
+##.advert
+##.sponsored
+##.sponsored-content
+##.taboola
+##.OUTBRAIN
+##.trc_related_container
+##div[id^="div-gpt-ad"]
+##div[id^="google_ads_iframe"]
+##ins.adsbygoogle
+##iframe[src*="doubleclick.net"]
+##iframe[src*="googlesyndication.com"]
+
+! ---- Cosmetic: consent / newsletter nags ----
+###onetrust-banner-sdk
+###onetrust-consent-sdk
+##.newsletter-signup
+##.newsletter-wall
+##.cookie-banner
+
+! ---- Procedural / extended-css edge case (uBO syntax) ----
+! Hide promo boxes whose text marks them as sponsored even without an ad class.
+##.promo-box:has-text(Sponsored)

@@ -123,6 +123,29 @@ describe('createHider', () => {
     expect(style?.textContent).toContain('.ad-from-list');
     expect(style?.textContent).toContain('display: none');
   });
+
+  it('injects engine cosmetics into a separate stylesheet that merges with defaults', () => {
+    const hider = createHider({ ...base, hideSelectors: ['.default-ad'] });
+    hider.injectStyles();
+    hider.setEngineStyles('.engine-ad { display: none !important; }');
+
+    const defaultStyle = document.getElementById('sch-cosmetic-style');
+    const engineStyle = document.getElementById('sch-engine-style');
+    // Two independent stylesheets: defaults stay synchronous, engine layers on.
+    expect(defaultStyle?.textContent).toContain('.default-ad');
+    expect(engineStyle?.textContent).toContain('.engine-ad');
+    // Engine stylesheet must not clobber the default one.
+    expect(defaultStyle?.textContent).not.toContain('.engine-ad');
+  });
+
+  it('removes the engine stylesheet when disabled', () => {
+    const hider = createHider(base);
+    hider.setEngineStyles('.engine-ad { display: none !important; }');
+    expect(document.getElementById('sch-engine-style')).not.toBeNull();
+
+    hider.update({ ...base, enabled: false });
+    expect(document.getElementById('sch-engine-style')).toBeNull();
+  });
 });
 
 describe('createHider procedural matching', () => {

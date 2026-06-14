@@ -1,9 +1,11 @@
 ---
 id: TASK-015.01
 title: 'Hybrid filter engine: @ghostery/adblocker + procedural layer'
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@claude'
 created_date: '2026-06-14 16:09'
+updated_date: '2026-06-14 17:29'
 labels:
   - engine
 dependencies: []
