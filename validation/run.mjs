@@ -194,6 +194,7 @@ const DEFAULTS = {
   removeSelectors: [],
   spoofAntiAdblock: true,
   cosmeticFilters: '',
+  dismissConsent: true,
 };
 
 async function getServiceWorker(context) {

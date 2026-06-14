@@ -15,6 +15,7 @@ describe('settings import/export round-trip', () => {
       spoofAntiAdblock: true,
       cosmeticFilters:
         'example.com##.banner\nexample.com##div.card:has-text(Sponsored)',
+      dismissConsent: false,
     };
 
     const restored = parseSettings(serializeSettings(settings));
@@ -33,6 +34,7 @@ describe('settings import/export round-trip', () => {
     expect(Object.keys(obj).sort()).toEqual(
       [
         'cosmeticFilters',
+        'dismissConsent',
         'enabled',
         'hideSelectors',
         'removeSelectors',
@@ -52,6 +54,21 @@ describe('settings import/export round-trip', () => {
     const restored = parseSettings(legacy);
     expect(restored.cosmeticFilters).toBe('');
     expect(restored.hideSelectors).toEqual(['.ad']);
+  });
+
+  it('backfills dismissConsent to its default (true) from an older export', () => {
+    // A v2-era export predates the dismissConsent field.
+    const legacy = JSON.stringify({
+      enabled: true,
+      hideSelectors: ['.ad'],
+      removeSelectors: [],
+      spoofAntiAdblock: true,
+      cosmeticFilters: 'example.com##.x',
+    });
+    const restored = parseSettings(legacy);
+    expect(restored.dismissConsent).toBe(true);
+    // Existing fields are preserved.
+    expect(restored.cosmeticFilters).toBe('example.com##.x');
   });
 
   it('rejects malformed JSON', () => {

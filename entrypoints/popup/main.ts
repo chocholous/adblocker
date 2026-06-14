@@ -19,6 +19,7 @@ const hideSelectors = $<HTMLTextAreaElement>('hideSelectors');
 const removeSelectors = $<HTMLTextAreaElement>('removeSelectors');
 const cosmeticFilters = $<HTMLTextAreaElement>('cosmeticFilters');
 const spoofAntiAdblock = $<HTMLInputElement>('spoofAntiAdblock');
+const dismissConsent = $<HTMLInputElement>('dismissConsent');
 const status = $<HTMLSpanElement>('status');
 
 const exportBtn = $<HTMLButtonElement>('export');
@@ -49,6 +50,7 @@ async function load(): Promise<void> {
   removeSelectors.value = s.removeSelectors.join('\n');
   cosmeticFilters.value = s.cosmeticFilters;
   spoofAntiAdblock.checked = s.spoofAntiAdblock;
+  dismissConsent.checked = s.dismissConsent;
   apiKey.value = await apiKeyItem.getValue();
 }
 
@@ -61,6 +63,7 @@ async function save(): Promise<void> {
     // trimming/blank-line removal happens at parse time, not on save.
     cosmeticFilters: cosmeticFilters.value,
     spoofAntiAdblock: spoofAntiAdblock.checked,
+    dismissConsent: dismissConsent.checked,
   };
   await settingsItem.setValue(next);
   status.textContent = 'Saved';

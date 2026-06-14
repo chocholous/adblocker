@@ -20,6 +20,12 @@ export interface HiderSettings {
    * `hideSelectors`/`removeSelectors`. Defaults to an empty string.
    */
   cosmeticFilters: string;
+  /**
+   * Automatically deal with cookie/consent (CMP) walls: first try to click a
+   * "reject all / decline / only necessary" control, and if none is found, hide
+   * the wall and restore scrolling. Defaults to `true`.
+   */
+  dismissConsent: boolean;
 }
 
 export const DEFAULT_SETTINGS: HiderSettings = {
@@ -67,6 +73,7 @@ export const DEFAULT_SETTINGS: HiderSettings = {
   removeSelectors: [],
   spoofAntiAdblock: true,
   cosmeticFilters: '',
+  dismissConsent: true,
 };
 
 /**
@@ -75,7 +82,7 @@ export const DEFAULT_SETTINGS: HiderSettings = {
  */
 export const settingsItem = storage.defineItem<HiderSettings>('sync:settings', {
   fallback: DEFAULT_SETTINGS,
-  version: 2,
+  version: 3,
   migrations: {
     // v1 -> v2: `cosmeticFilters` was introduced. Existing stored settings have
     // no such field, so default it to '' without touching any other user data.
@@ -83,6 +90,15 @@ export const settingsItem = storage.defineItem<HiderSettings>('sync:settings', {
       ...DEFAULT_SETTINGS,
       ...(old ?? {}),
       cosmeticFilters: old?.cosmeticFilters ?? '',
+    }),
+    // v2 -> v3: `dismissConsent` was introduced. Backfill it to `true` for
+    // existing users (consent walls should be handled by default) while
+    // preserving every previously-stored field, including `cosmeticFilters`.
+    3: (old: Partial<HiderSettings> | null): HiderSettings => ({
+      ...DEFAULT_SETTINGS,
+      ...(old ?? {}),
+      cosmeticFilters: old?.cosmeticFilters ?? '',
+      dismissConsent: old?.dismissConsent ?? true,
     }),
   },
 });
@@ -150,6 +166,7 @@ export function parseSettings(json: string): HiderSettings {
       DEFAULT_SETTINGS.spoofAntiAdblock,
     ),
     cosmeticFilters: str('cosmeticFilters', DEFAULT_SETTINGS.cosmeticFilters),
+    dismissConsent: bool('dismissConsent', DEFAULT_SETTINGS.dismissConsent),
   };
 }
 
