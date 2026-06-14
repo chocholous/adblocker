@@ -1,0 +1,14 @@
+# Automated dependency updates. Opens weekly PRs that run through the same CI
+# gate as any other change — see .github/workflows/ci.yml.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
