@@ -42,6 +42,16 @@ jobs:
           name: chrome-mv3
           path: .output/chrome-mv3
 
+      # Store-ready package (Chrome/Edge). Firefox is out of scope for now.
+      - name: Zip (chrome/edge)
+        run: npm run zip
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: .output/*.zip
+
   # E2E gate: loads the built extension into real Chromium (new headless).
   e2e:
     runs-on: ubuntu-latest
