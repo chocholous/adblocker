@@ -1,0 +1,51 @@
+{
+  "name": "stealth-content-hider",
+  "version": "0.1.0",
+  "description": "Manifest V3 cosmetic content-filtering browser extension built with WXT.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "compile": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "wxt build && playwright test",
+    "gate": "npm run format:check && npm run lint && npm run compile && npm test && npm run build",
+    "postinstall": "wxt prepare",
+    "prepare": "git config core.hooksPath .githooks"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,html,json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
+    "backlog.md": "^1.46.1",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "happy-dom": "^20.10.3",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.4",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.61.0",
+    "vitest": "^4.1.8",
+    "wxt": "^0.19.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1"
+  }
+}

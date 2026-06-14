@@ -1,0 +1,194 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --accent: #2563eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  margin: 0;
+  padding: 14px;
+  font:
+    13px/1.45 system-ui,
+    sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field span small,
+.field span {
+  color: var(--fg);
+}
+
+.field small {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+  background: transparent;
+  color: var(--fg);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.switch input {
+  display: none;
+}
+
+.slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 22px;
+  transition: background 0.15s;
+}
+
+.slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+
+.switch input:checked + .slider {
+  background: var(--accent);
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(18px);
+}
+
+/* AI cleanup section */
+.sep {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.ai {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+input[type='password'] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+  background: transparent;
+  color: var(--fg);
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.result {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.result strong {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--border);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.results-actions {
+  gap: 8px;
+}

@@ -1,0 +1,13 @@
+/*
+ * Base cosmetic stylesheet, injected at document_start via the content script's
+ * `cssInjectionMode: 'manifest'`. These are static, always-on rules.
+ *
+ * User-configured selectors are applied separately at runtime (see lib/hider.ts)
+ * so they can change without rebuilding the extension. Add only broadly-safe,
+ * generic rules here.
+ */
+
+/* Example: hide elements explicitly tagged by our own UI as collapsed. */
+[data-sch-hidden='true'] {
+  display: none !important;
+}

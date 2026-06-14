@@ -1,0 +1,4 @@
+#!/bin/sh
+# Pre-commit gate: run the fast checks (lint + format) on staged files only.
+# The full gate (types, tests, build) runs in CI — see docs/gates.md.
+npx --no-install lint-staged

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# WXT build artifacts and generated types
+.wxt/
+.output/
+dist/
+*.zip
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+.playwright/
+
+# Env / local
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stealth Content Hider</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <header class="row">
+        <h1>Content Hider</h1>
+        <label class="switch">
+          <input type="checkbox" id="enabled" />
+          <span class="slider"></span>
+        </label>
+      </header>
+
+      <label class="field">
+        <span>Hide selectors <small>(display: none)</small></span>
+        <textarea
+          id="hideSelectors"
+          rows="5"
+          spellcheck="false"
+          placeholder="[data-ad]&#10;.sponsored-content"
+        ></textarea>
+      </label>
+
+      <label class="field">
+        <span>Remove selectors <small>(detach from DOM)</small></span>
+        <textarea
+          id="removeSelectors"
+          rows="3"
+          spellcheck="false"
+          placeholder=".paywall-overlay"
+        ></textarea>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="spoofAntiAdblock" />
+        <span>Spoof anti-adblock detection</span>
+      </label>
+
+      <footer class="row">
+        <button id="save" type="button">Save</button>
+        <span id="status" class="status" aria-live="polite"></span>
+      </footer>
+
+      <hr class="sep" />
+
+      <section class="ai">
+        <label class="field">
+          <span
+            >Anthropic API key <small>(stored locally, not synced)</small></span
+          >
+          <input
+            type="password"
+            id="apiKey"
+            placeholder="sk-ant-..."
+            autocomplete="off"
+          />
+        </label>
+        <button id="cleanup" type="button" class="secondary">
+          Clean up this page (AI)
+        </button>
+        <span id="aiStatus" class="status" aria-live="polite"></span>
+        <div id="results" class="results"></div>
+        <div class="row results-actions" id="resultsActions" hidden>
+          <button id="saveRules" type="button">Save selected</button>
+          <button id="clearPreview" type="button" class="secondary">
+            Clear
+          </button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
