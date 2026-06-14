@@ -6,6 +6,7 @@ import { parseCosmeticFilters, selectorsForHostname } from '@/lib/filterlist';
 import { collectDomHints } from '@/lib/dom-hints';
 import { buildPageDigest } from '@/lib/digest';
 import { serveSpoofConfig } from '@/lib/bridge';
+import { runConsentHandler } from '@/lib/consent';
 import type {
   CleanupResult,
   DetectResponse,
@@ -112,6 +113,18 @@ export default defineContentScript({
       hider.setCosmetics(resolveCosmetics(settings));
       hider.injectStyles();
       hider.startObserver();
+    }
+
+    // Consent / cookie (CMP) wall handling. Runs only in the top frame (CMPs
+    // wall the main document, not sub-frames) and only when both the master
+    // switch and the dismissConsent toggle are on. Fully defensive internally,
+    // so a misbehaving page can never break the rest of the content script.
+    if (settings.enabled && settings.dismissConsent && window.top === window) {
+      try {
+        runConsentHandler();
+      } catch {
+        // never let consent handling abort the rest of setup
+      }
     }
 
     // Pull the real-list engine cosmetics for this frame and layer them on top

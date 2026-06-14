@@ -8,6 +8,7 @@ const base: HiderSettings = {
   removeSelectors: [],
   spoofAntiAdblock: false,
   cosmeticFilters: '',
+  dismissConsent: true,
 };
 
 beforeEach(() => {
