@@ -2,6 +2,7 @@ import type { HiderSettings } from './settings';
 import type { ProceduralSelector } from './filterlist';
 
 const STYLE_ID = 'sch-cosmetic-style';
+const ENGINE_STYLE_ID = 'sch-engine-style';
 
 /**
  * Extra cosmetic selectors resolved for the current hostname from the raw
@@ -77,6 +78,8 @@ export function createHider(initial: HiderSettings) {
   let settings = initial;
   let cosmetics: ResolvedCosmetics = EMPTY_COSMETICS;
   let styleEl: HTMLStyleElement | null = null;
+  let engineStyleEl: HTMLStyleElement | null = null;
+  let engineStyles = '';
   let observer: MutationObserver | null = null;
 
   function injectStyles(): void {
@@ -88,6 +91,24 @@ export function createHider(initial: HiderSettings) {
       (document.head ?? document.documentElement).appendChild(styleEl);
     }
     styleEl.textContent = css;
+  }
+
+  /**
+   * Inject the filter-engine's resolved hide-stylesheet. The engine produces a
+   * complete CSS string (its own `{ display:none !important }` rules), so we keep
+   * it in a SEPARATE `<style>` from the user/default hide stylesheet and just
+   * assign its text verbatim. Kept independent so engine updates (which arrive
+   * asynchronously and again as the DOM mutates) never clobber the synchronous
+   * default/user stylesheet injected at document_start.
+   */
+  function injectEngineStyles(): void {
+    if (!settings.enabled) return;
+    if (!engineStyleEl) {
+      engineStyleEl = document.createElement('style');
+      engineStyleEl.id = ENGINE_STYLE_ID;
+      (document.head ?? document.documentElement).appendChild(engineStyleEl);
+    }
+    engineStyleEl.textContent = engineStyles;
   }
 
   /**
@@ -227,19 +248,40 @@ export function createHider(initial: HiderSettings) {
     }
   }
 
+  /**
+   * Replace the filter-engine hide-stylesheet text and (re)inject it when
+   * active. Called whenever the background resolves a new set of engine
+   * cosmetics for this frame (initial load, and after DOM-driven generic
+   * re-resolution). Merging is additive: this stylesheet sits alongside the
+   * synchronous default/user stylesheet, so both sets of selectors apply.
+   */
+  function setEngineStyles(css: string): void {
+    engineStyles = css;
+    if (settings.enabled) injectEngineStyles();
+  }
+
   /** Apply a new settings snapshot (e.g. after the popup saves changes). */
   function update(next: HiderSettings): void {
     settings = next;
     if (next.enabled) {
       injectStyles();
+      injectEngineStyles();
       startObserver();
     } else {
       observer?.disconnect();
       observer = null;
       styleEl?.remove();
       styleEl = null;
+      engineStyleEl?.remove();
+      engineStyleEl = null;
     }
   }
 
-  return { injectStyles, startObserver, setCosmetics, update };
+  return {
+    injectStyles,
+    startObserver,
+    setCosmetics,
+    setEngineStyles,
+    update,
+  };
 }

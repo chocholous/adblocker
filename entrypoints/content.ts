@@ -3,11 +3,13 @@ import { browser } from 'wxt/browser';
 import { settingsItem, type HiderSettings } from '@/lib/settings';
 import { createHider, type ResolvedCosmetics } from '@/lib/hider';
 import { parseCosmeticFilters, selectorsForHostname } from '@/lib/filterlist';
+import { collectDomHints } from '@/lib/dom-hints';
 import { buildPageDigest } from '@/lib/digest';
 import { serveSpoofConfig } from '@/lib/bridge';
 import type {
   CleanupResult,
   DetectResponse,
+  EngineCosmeticsResponse,
   RuntimeMessage,
 } from '@/lib/detect';
 import '@/assets/hider.css';
@@ -25,6 +27,27 @@ function resolveCosmetics(settings: HiderSettings): ResolvedCosmetics {
     return selectorsForHostname(ruleSet, location.hostname);
   } catch {
     return { css: [], procedural: [] };
+  }
+}
+
+/**
+ * Ask the background filter engine for the cosmetics that apply to this frame,
+ * passing the page's DOM tokens so generic hides can be resolved. Returns an
+ * empty result on any failure so a missing/broken engine never breaks the page.
+ */
+async function fetchEngineCosmetics(): Promise<EngineCosmeticsResponse> {
+  try {
+    const hints = collectDomHints(document);
+    const res = (await browser.runtime.sendMessage({
+      type: 'sch:engineCosmetics',
+      url: location.href,
+      hostname: location.hostname,
+      domain: null,
+      hints,
+    })) as EngineCosmeticsResponse | undefined;
+    return res ?? { styles: '', scripts: [] };
+  } catch {
+    return { styles: '', scripts: [] };
   }
 }
 
@@ -90,6 +113,47 @@ export default defineContentScript({
       hider.injectStyles();
       hider.startObserver();
     }
+
+    // Pull the real-list engine cosmetics for this frame and layer them on top
+    // of the synchronous default/user stylesheet. This is the "ads disappear at
+    // scale" layer: EasyList/EasyPrivacy/uBO/AdGuard hides, including generic
+    // ones resolved against the live DOM. Runs async (engine lives in the
+    // background) so it never blocks the document_start default injection. We
+    // re-resolve a few times as the DOM grows, since generic hides depend on the
+    // classes/ids/hrefs actually present on the page.
+    let lastEngineStyles = '';
+    const refreshEngineCosmetics = async (): Promise<void> => {
+      if (!hider) return;
+      const { styles } = await fetchEngineCosmetics();
+      if (styles && styles !== lastEngineStyles) {
+        lastEngineStyles = styles;
+        hider.setEngineStyles(styles);
+      }
+    };
+    void refreshEngineCosmetics();
+    // Debounced re-resolution while the DOM is still being built up.
+    let engineTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleEngineRefresh = (): void => {
+      if (engineTimer) return;
+      engineTimer = setTimeout(() => {
+        engineTimer = null;
+        void refreshEngineCosmetics();
+      }, 500);
+    };
+    const engineObserver = new MutationObserver(() => {
+      if (settings.enabled) scheduleEngineRefresh();
+    });
+    try {
+      engineObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    } catch {
+      // documentElement should always exist at document_start; ignore if not.
+    }
+    // Stop re-resolving once the page has settled to bound work.
+    setTimeout(() => engineObserver.disconnect(), 10000);
+
     // Keep `settings` current so the spoof config served to MAIN reflects live
     // changes, and propagate updates to the hider when active.
     settingsItem.watch((next: HiderSettings) => {
@@ -98,6 +162,7 @@ export default defineContentScript({
       // push the new settings snapshot to the hider.
       hider?.setCosmetics(resolveCosmetics(next));
       hider?.update(next);
+      void refreshEngineCosmetics();
     });
 
     // Popup-triggered commands. Cleanup runs only in the top frame.

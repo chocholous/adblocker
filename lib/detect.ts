@@ -49,6 +49,25 @@ export type DetectResponse =
   | { ok: true; rules: DetectedRule[] }
   | { ok: false; error: string };
 
+/**
+ * Cosmetic-filter request from a content frame to the background engine.
+ * DOM hints (classes/ids/hrefs) let the engine resolve GENERIC cosmetic filters
+ * that can actually match the live page, keeping the injected stylesheet small.
+ */
+export interface EngineCosmeticsMessage {
+  type: 'sch:engineCosmetics';
+  url: string;
+  hostname: string;
+  domain: string | null;
+  hints: { classes?: string[]; ids?: string[]; hrefs?: string[] };
+}
+
+/** Background's reply with the resolved hide-stylesheet + scriptlet sources. */
+export interface EngineCosmeticsResponse {
+  styles: string;
+  scripts: string[];
+}
+
 /** Result the popup receives back from the content script. */
 export type CleanupResult = DetectResponse;
 
@@ -66,4 +85,5 @@ export interface ClearPreviewMessage {
 export type RuntimeMessage =
   | DetectMessage
   | CleanupMessage
-  | ClearPreviewMessage;
+  | ClearPreviewMessage
+  | EngineCosmeticsMessage;

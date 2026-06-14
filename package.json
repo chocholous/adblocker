@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
+    "build:filters": "node scripts/build-filters.mjs",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
@@ -46,7 +47,8 @@
     "wxt": "^0.20.26"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.104.1"
+    "@anthropic-ai/sdk": "^0.104.1",
+    "@ghostery/adblocker": "^2.18.0"
   },
   "overrides": {
     "shell-quote": "^1.8.4",

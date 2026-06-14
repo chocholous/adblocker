@@ -2,12 +2,20 @@ import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { settingsItem, apiKeyItem } from '@/lib/settings';
 import { detectElementsToHide } from '@/lib/anthropic';
-import type { DetectResponse, PageDigest, RuntimeMessage } from '@/lib/detect';
+import { loadEngine, cosmeticsForFrame } from '@/lib/engine';
+import type {
+  DetectResponse,
+  EngineCosmeticsMessage,
+  EngineCosmeticsResponse,
+  PageDigest,
+  RuntimeMessage,
+} from '@/lib/detect';
 
 /**
- * The MV3 service worker. Seeds default settings on install, and handles the
- * one privileged operation that must not run in a page context: calling the
- * Anthropic API for on-demand cleanup (keeps the API key out of web pages).
+ * The MV3 service worker. Seeds default settings on install, owns the heavy
+ * filter ENGINE (loaded once here, queried by content frames over the message
+ * bus), and handles the one privileged operation that must not run in a page
+ * context: calling the Anthropic API for on-demand cleanup.
  */
 export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(async () => {
@@ -15,15 +23,39 @@ export default defineBackground(() => {
     await settingsItem.setValue(current);
   });
 
+  // Warm the engine eagerly so the first frame's cosmetics request is fast.
+  void loadEngine();
+
   browser.runtime.onMessage.addListener((message: unknown) => {
     const msg = message as RuntimeMessage | undefined;
     if (msg?.type === 'sch:detect') {
       return handleDetect(msg.digest);
     }
+    if (msg?.type === 'sch:engineCosmetics') {
+      return handleEngineCosmetics(msg);
+    }
     // Returning undefined lets other listeners (e.g. in content scripts) respond.
     return undefined;
   });
 });
+
+/** Resolve a frame's engine cosmetics; never rejects so the frame can degrade. */
+async function handleEngineCosmetics(
+  msg: EngineCosmeticsMessage,
+): Promise<EngineCosmeticsResponse> {
+  try {
+    const settings = await settingsItem.getValue();
+    if (!settings.enabled) return { styles: '', scripts: [] };
+    return await cosmeticsForFrame(
+      msg.url,
+      msg.hostname,
+      msg.domain,
+      msg.hints,
+    );
+  } catch {
+    return { styles: '', scripts: [] };
+  }
+}
 
 async function handleDetect(digest: PageDigest): Promise<DetectResponse> {
   const apiKey = await apiKeyItem.getValue();
