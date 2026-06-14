@@ -40,28 +40,58 @@ export function createHider(initial: HiderSettings) {
     styleEl.textContent = css;
   }
 
+  /**
+   * Detach an element, falling back to `display: none` when detaching is not
+   * safe. On React/Next SPA pages calling `el.remove()` can throw
+   * `Failed to execute 'removeChild' on 'Node'` because the framework still
+   * tracks the (now detached) node and tries to reconcile it. Rather than let
+   * that crash the page, we hide the element inline so it still disappears
+   * without breaking the framework. Hiding is also the degrade path for any
+   * other removal failure. Idempotent: a node already hidden/detached is a
+   * no-op on re-processing.
+   */
+  function safeRemove(el: Element): void {
+    try {
+      el.remove();
+    } catch {
+      try {
+        (el as HTMLElement).style?.setProperty('display', 'none', 'important');
+      } catch {
+        // Last resort: nothing more we can safely do for this node. Swallow so
+        // one pathological node never aborts processing of the rest.
+      }
+    }
+  }
+
   function removeWithin(root: ParentNode): void {
     const list = selectorList(settings.removeSelectors);
     if (!list) return;
-    for (const el of root.querySelectorAll(list)) el.remove();
+    for (const el of root.querySelectorAll(list)) safeRemove(el);
   }
 
   function startObserver(): void {
     removeWithin(document);
     observer?.disconnect();
     observer = new MutationObserver((mutations) => {
-      const list = selectorList(settings.removeSelectors);
-      if (!list) return;
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeType !== Node.ELEMENT_NODE) continue;
-          const el = node as Element;
-          if (el.matches(list)) {
-            el.remove();
-          } else {
-            removeWithin(el);
+      try {
+        const list = selectorList(settings.removeSelectors);
+        if (!list) return;
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            const el = node as Element;
+            if (el.matches(list)) {
+              safeRemove(el);
+            } else {
+              removeWithin(el);
+            }
           }
         }
+      } catch {
+        // A single bad node/selector must never kill cosmetic filtering for the
+        // rest of the page. Per-node failures are already contained in
+        // safeRemove; this is a final guard so the observer callback can never
+        // throw out.
       }
     });
     observer.observe(document.documentElement, {
