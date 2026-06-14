@@ -8,6 +8,23 @@ export default defineConfig({
     description:
       'Cosmetic content filtering: let pages load, then suppress unwanted elements in your own view.',
     version: '0.1.0',
+    // Icons live in public/icon/. WXT auto-detects the top-level `icons` map
+    // (shown in chrome://extensions); we also set action.default_icon so the
+    // generated icons render in the browser toolbar.
+    icons: {
+      16: 'icon/16.png',
+      32: 'icon/32.png',
+      48: 'icon/48.png',
+      128: 'icon/128.png',
+    },
+    action: {
+      default_icon: {
+        16: 'icon/16.png',
+        32: 'icon/32.png',
+        48: 'icon/48.png',
+        128: 'icon/128.png',
+      },
+    },
     permissions: ['storage', 'scripting', 'declarativeNetRequest', 'activeTab'],
     host_permissions: ['<all_urls>'],
     // Static network-level rules (trackers/telemetry). Cosmetic hiding is done
