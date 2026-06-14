@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import { settingsItem, type HiderSettings } from '@/lib/settings';
 import { createHider } from '@/lib/hider';
 import { buildPageDigest } from '@/lib/digest';
+import { serveSpoofConfig } from '@/lib/bridge';
 import type {
   CleanupResult,
   DetectResponse,
@@ -57,20 +58,27 @@ export default defineContentScript({
   allFrames: true,
   cssInjectionMode: 'manifest',
   async main() {
-    const settings = await settingsItem.getValue();
+    let settings = await settingsItem.getValue();
 
-    window.dispatchEvent(
-      new CustomEvent('sch:config', {
-        detail: { spoofAntiAdblock: settings.spoofAntiAdblock },
-      }),
-    );
+    // Serve the spoof config to the MAIN world. This eagerly pushes once and
+    // answers any request the MAIN-world script makes, so the handshake works
+    // regardless of which script initializes first. `getConfig` reads the latest
+    // `settings` so live updates are reflected if MAIN re-requests.
+    serveSpoofConfig(window, () => ({
+      spoofAntiAdblock: settings.spoofAntiAdblock,
+    }));
 
-    if (settings.enabled) {
-      const hider = createHider(settings);
+    const hider = settings.enabled ? createHider(settings) : null;
+    if (hider) {
       hider.injectStyles();
       hider.startObserver();
-      settingsItem.watch((next: HiderSettings) => hider.update(next));
     }
+    // Keep `settings` current so the spoof config served to MAIN reflects live
+    // changes, and propagate updates to the hider when active.
+    settingsItem.watch((next: HiderSettings) => {
+      settings = next;
+      hider?.update(next);
+    });
 
     // Popup-triggered commands. Cleanup runs only in the top frame.
     browser.runtime.onMessage.addListener((message: unknown) => {

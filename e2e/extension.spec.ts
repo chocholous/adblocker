@@ -63,3 +63,32 @@ test('hides elements matching a default selector, keeps real content', async ({
   await expect(page.locator('#content')).toBeVisible();
   await expect(page.locator('#banner')).toBeHidden();
 });
+
+/**
+ * The MAIN-world scriptlet spoofs `window.adsbygoogle` to look "loaded" so
+ * anti-adblock bait checks pass. It can only do this after the ISOLATED world
+ * delivers the spoof config across the world boundary. Both content scripts run
+ * at document_start with no guaranteed order, so the handshake (eager push +
+ * request/response in lib/bridge.ts) must deliver the config either way.
+ *
+ * Reading the spoofed global from a page-context script proves the MAIN world
+ * received the config — i.e. the handshake completed regardless of load order.
+ */
+test('MAIN world spoofs adsbygoogle (handshake delivered config)', async ({
+  context,
+  baseURL,
+}) => {
+  const page = await context.newPage();
+  await page.goto(`${baseURL}/`);
+
+  // `page.evaluate` runs in the page (MAIN) context, where the scriptlet has
+  // installed its spoofing getter. With spoof enabled (the default), the getter
+  // returns a benign "loaded" ad object.
+  const spoofed = await page.evaluate(() => {
+    const ads = (window as unknown as { adsbygoogle?: { loaded?: boolean } })
+      .adsbygoogle;
+    return ads?.loaded === true;
+  });
+
+  expect(spoofed).toBe(true);
+});
