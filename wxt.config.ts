@@ -29,7 +29,7 @@ export default defineConfig({
     host_permissions: ['<all_urls>'],
     // Static network-level rules (trackers/telemetry). Cosmetic hiding is done
     // in the content scripts, NOT here — see docs/architecture.md.
-    declarative_net_rules: {
+    declarative_net_request: {
       rule_resources: [
         {
           id: 'ruleset_trackers',
