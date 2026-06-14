@@ -38,6 +38,32 @@ every push and PR — see [`docs/gates.md`](docs/gates.md).
 Load the unpacked build (`.output/chrome-mv3/`) via `chrome://extensions` →
 Developer mode → "Load unpacked". See [`docs/development.md`](docs/development.md).
 
+## Dependencies & security
+
+All deps are kept on their latest releases. A few transitive **dev-only**
+packages (pulled in by `wxt` / `web-ext-run`) shipped known CVEs, so
+`package.json` pins them to patched versions via `overrides`:
+
+```json
+"overrides": {
+  "shell-quote": "^1.8.4",
+  "tar": "^7.5.16",
+  "tmp": "^0.2.7",
+  "uuid": "^14.0.0"
+}
+```
+
+This clears 8 of the 12 advisories `npm audit` originally reported. The
+remaining 4 are a single `esbuild` advisory (GHSA-gv7w-rqvm-qjhr) counted once
+each for `esbuild → vite → vite-node → wxt`. Its fix (`esbuild@0.28.1`) is **not
+yet compatible** with the `vite@6` that `vitest`/`wxt` use, and forcing it
+breaks the build — so it is intentionally left unpinned. It is a build-time
+dependency (never shipped in the extension) and the advisory concerns esbuild's
+Deno install path, not the npm build, so real-world risk is negligible. Drop the
+esbuild concern by bumping `vite`/`vitest` once they support esbuild 0.28+.
+
+Re-check anytime with `npm audit`.
+
 ## Project layout
 
 ```
