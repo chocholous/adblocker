@@ -98,6 +98,14 @@ export const DEFAULT_SETTINGS: HiderSettings = {
     '[class*="ad-container" i]',
     // Seznam SSP / Sklik ad slots (seznam.cz, novinky.cz, sport.cz …).
     '[class*="ssp-advert" i]',
+    '[id^="sklik" i]',
+    '[class*="sklik" i]',
+    // Seznam imedia.cz ad/recommendation iframes (aktualne.cz, sport.cz …):
+    // imedia.cz is Seznam's ad-serving CDN, so hiding its iframes is precise.
+    'iframe[src*="imedia.cz" i]',
+    // DoubleClick-for-Publishers slots that reserve layout even when empty
+    // (e.g. vox.com `dfp_ad--held-area`). `dfp_ad` is an unambiguous ad marker.
+    '[class*="dfp_ad" i]',
     // CPEx subscription/consent wall (CNC sites: blesk.cz, reflex.cz …) — no
     // reject control, so hide the whole CPEx overlay deterministically.
     '[id^="cpexSubs" i]',
