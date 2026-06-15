@@ -207,9 +207,94 @@ function clickOnce(el: Element): boolean {
 }
 
 /**
+ * Inline/control tags that are never themselves a consent WALL. A footer link
+ * like `<a class="atm-cmp-link">Nastavení cookies</a>` matches the `cmp` token
+ * but is just a link — hiding it is a (small) false-positive, so containers are
+ * restricted to structural elements.
+ */
+const NON_WALL_TAGS = new Set([
+  'A',
+  'BUTTON',
+  'SPAN',
+  'LABEL',
+  'INPUT',
+  'SELECT',
+  'OPTION',
+  'SVG',
+  'PATH',
+  'IMG',
+  'I',
+  'B',
+  'STRONG',
+  'EM',
+  'LI',
+]);
+
+/** Minimum rendered area (px²) for something to count as a consent wall. */
+const MIN_WALL_AREA = 6000;
+
+/**
+ * A consent WALL is a sizeable structural block (banner/overlay/dialog), not a
+ * tiny inline link or button. Gate on tag + rendered area so we never hide
+ * incidental "cookie settings" links that merely carry a consent token.
+ */
+function isHideableWall(el: Element): boolean {
+  if (NON_WALL_TAGS.has(el.tagName)) return false;
+  try {
+    const r = (el as HTMLElement).getBoundingClientRect?.();
+    // Only reject on size when we have REAL geometry. A 0×0 rect means the
+    // element isn't laid out (or we're under happy-dom in tests) — treat that as
+    // "no size info" rather than "too small", so we don't drop real walls.
+    if (
+      r &&
+      (r.width > 0 || r.height > 0) &&
+      r.width * r.height < MIN_WALL_AREA
+    )
+      return false;
+  } catch {
+    // no geometry available — don't reject on size
+  }
+  return true;
+}
+
+/** Whitespace-collapsed rendered-text length of an element. */
+function renderedTextLen(el: Element): number {
+  try {
+    const t = (el as HTMLElement).innerText ?? el.textContent ?? '';
+    return t.replace(/\s+/g, ' ').trim().length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Would hiding `root` blank the page? True when almost no rendered text would
+ * remain outside `root` — i.e. the "wall" IS essentially the whole page (a
+ * dedicated consent/paywall page such as cmp.seznam.cz), so hiding it leaves a
+ * blank white page. On such pages hiding is strictly worse than leaving the wall
+ * (the user can still read/interact); this guard preserves the ZERO-false-
+ * positive promise. Overlays on top of real content are unaffected: the article
+ * text behind them keeps `outside` well above the threshold.
+ */
+function wouldBlankPage(root: Element): boolean {
+  try {
+    const total = renderedTextLen(document.body ?? document.documentElement);
+    if (total === 0) return false; // nothing rendered anyway; hiding is a no-op
+    const inRoot = renderedTextLen(root);
+    const outside = total - inRoot;
+    // Blank only when the wall DOMINATES the page (>=90% of rendered text) AND
+    // almost nothing would remain. An overlay over a real article fails both:
+    // the article text keeps `outside` large and the ratio well below 0.9.
+    return inRoot / total >= 0.9 && outside < 150;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Collect distinct nodes that read as consent dialogs/overlays: elements with
  * consent tokens in id/class plus role=dialog elements, filtered to genuine
- * consent contexts that are currently visible.
+ * consent contexts that are currently visible and large enough to be a wall.
  */
 function findConsentContainers(): Element[] {
   const out = new Set<Element>();
@@ -229,6 +314,7 @@ function findConsentContainers(): Element[] {
   for (const el of candidates) {
     if (!isVisible(el)) continue;
     if (!isConsentContext(el, 2)) continue;
+    if (!isHideableWall(el)) continue;
     out.add(el);
   }
   return Array.from(out);
@@ -292,6 +378,13 @@ function hideAndUnlock(): boolean {
     const root = consentRoot(c) ?? c;
     if (root.getAttribute(HANDLED_ATTR) === 'hidden') {
       hidAny = true;
+      continue;
+    }
+    // ZERO-FP guard: never hide a wall that IS essentially the whole page (a
+    // dedicated consent/paywall page). Hiding it would blank the page, which is
+    // strictly worse than leaving the wall in place.
+    if (wouldBlankPage(root)) {
+      root.setAttribute(HANDLED_ATTR, 'kept');
       continue;
     }
     try {
@@ -434,4 +527,6 @@ export const __test = {
   restoreScrolling,
   isConsentContext,
   findConsentContainers,
+  isHideableWall,
+  wouldBlankPage,
 };

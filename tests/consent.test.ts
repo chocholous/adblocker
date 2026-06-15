@@ -3,7 +3,13 @@ import { storage } from 'wxt/utils/storage';
 import { __test } from '../lib/consent';
 import { settingsItem, DEFAULT_SETTINGS } from '../lib/settings';
 
-const { handleOnce, restoreScrolling, isConsentContext } = __test;
+const {
+  handleOnce,
+  restoreScrolling,
+  isConsentContext,
+  isHideableWall,
+  wouldBlankPage,
+} = __test;
 
 /** Reset the document body between tests for isolation. */
 beforeEach(() => {
@@ -153,6 +159,37 @@ describe('consent handler — no-op safety (zero false positives)', () => {
     expect(
       (document.getElementById('modal') as HTMLElement).style.display,
     ).toBe('');
+  });
+
+  it('does NOT hide tiny inline links that merely carry a consent token', () => {
+    // A footer "Nastavení cookies" link (Seznam: a.atm-cmp-link) matches the
+    // `cmp` token but is just a link — hiding it is a false-positive.
+    document.body.innerHTML = `
+      <main>real article body text goes here and is long enough</main>
+      <footer>
+        <a class="atm-cmp-link" href="/cmp">Nastavení cookies</a>
+      </footer>`;
+    const link = document.querySelector('.atm-cmp-link') as HTMLElement;
+    expect(isHideableWall(link)).toBe(false);
+    handleOnce();
+    expect(link.style.display).not.toBe('none');
+  });
+
+  it('does NOT blank a dedicated consent page (wall is the whole page)', () => {
+    // cmp.seznam.cz-style: the consent dialog IS essentially the entire page.
+    // Hiding it would leave a blank white page, so we must keep it.
+    document.body.innerHTML = `
+      <div class="szn-cmp-dialog-container" role="dialog">
+        <p>We value your privacy and use cookies. Please choose your settings.</p>
+      </div>`;
+    const wall = document.querySelector(
+      '.szn-cmp-dialog-container',
+    ) as HTMLElement;
+    expect(wouldBlankPage(wall)).toBe(true);
+    handleOnce();
+    // Kept visible (not display:none) because hiding would blank the page.
+    expect(wall.style.display).not.toBe('none');
+    expect(wall.getAttribute('data-sch-consent')).toBe('kept');
   });
 
   it('isConsentContext is true only for cookie/consent-ish nodes', () => {

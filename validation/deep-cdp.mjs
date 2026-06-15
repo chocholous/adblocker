@@ -55,6 +55,9 @@ const ARTICLES = Math.max(0, parseInt(val('articles', '2'), 10));
 const LIMIT = parseInt(val('limit', '0'), 10) || 0;
 const OUT_DIR = val('out', '/tmp/sch-deep');
 const SHOTS = args.includes('--shots');
+const URLS_FILE = val('urlsfile', '');
+const NAV_TIMEOUT = parseInt(val('navtimeout', '30000'), 10) || 30000;
+const KIND_DEFAULT = val('kind', 'ad');
 
 const CDP = process.env.CDP_ENDPOINT;
 if (!CDP) {
@@ -88,6 +91,19 @@ const CZ = [
 const corpusJson = JSON.parse(readFileSync(resolve(here, 'corpus.json'), 'utf8'));
 
 function targets() {
+  // Explicit URL list (e.g. re-running a previous run's timed-out sites).
+  if (URLS_FILE) {
+    const urls = readFileSync(URLS_FILE, 'utf8')
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const cleanSet = new Set(corpusJson.clean.map((e) => e.url));
+    const list = urls.map((url) => ({
+      url,
+      kind: cleanSet.has(url) ? 'clean' : KIND_DEFAULT,
+    }));
+    return LIMIT ? list.slice(0, LIMIT) : list;
+  }
   let list;
   if (SET === 'cz') list = CZ;
   else if (SET === 'intl')
@@ -249,7 +265,6 @@ async function findArticleLinks(page, n) {
     .catch(() => []);
 }
 
-const NAV_TIMEOUT = 30000;
 const SETTLE = 3000;
 
 async function visit(page, url, label, errors, shotsDir) {
@@ -336,8 +351,11 @@ async function processSite(context, site, shotsDir) {
   } finally {
     await page.close().catch(() => {});
   }
-  // Site-level rollup.
+  // Site-level rollup. A site that produced no pages at all is a navigation
+  // failure (usually a timeout under load), NOT a clean pass — label it so.
   out.flags = [...new Set(out.pages.flatMap((p) => p.flags || []))];
+  if (out.pages.length === 0 && !out.flags.includes('NAV_ERROR'))
+    out.flags.push('NAV_ERROR');
   return out;
 }
 
