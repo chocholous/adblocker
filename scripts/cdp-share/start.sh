@@ -43,8 +43,15 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "==> Launching Chrome (CDP :$CDP_UPSTREAM_PORT, unpacked extension)"
+# HEADLESS=1 runs without a visible window. Requires the NEW headless mode
+# (--headless=new) — the old --headless cannot load extensions. Verified to load
+# and run the unpacked extension fine in Chrome for Testing.
+HEADLESS_FLAG=""
+[ -n "${HEADLESS:-}" ] && HEADLESS_FLAG="--headless=new"
+
+echo "==> Launching Chrome (CDP :$CDP_UPSTREAM_PORT, unpacked extension${HEADLESS_FLAG:+, headless})"
 "$CHROME_BIN" \
+  $HEADLESS_FLAG \
   --remote-debugging-port="$CDP_UPSTREAM_PORT" \
   --remote-allow-origins='*' \
   --user-data-dir="$PROFILE_DIR" \

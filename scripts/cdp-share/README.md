@@ -27,6 +27,7 @@ https://<random>.trycloudflare.com/<secret>
 | `CDP_PROXY_PORT`    | `9223`                        | local proxy port                 |
 | `CDP_SECRET`        | auto (`openssl rand -hex 16`) | shared secret = URL path gate    |
 | `CHROME_BIN`        | Playwright Chrome for Testing | Chrome binary                    |
+| `HEADLESS`          | unset (headed)                | set to `1` for `--headless=new` (loads extensions; old `--headless` does not) |
 
 > **Do not use the system Google Chrome on a managed (enterprise/MDM) machine** —
 > its policy silently blocks unpacked extensions, so `--load-extension` is ignored
