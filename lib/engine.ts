@@ -127,21 +127,19 @@ export function resolveCosmetics(
 }
 
 /**
- * Whether a network request should be blocked by the engine.
+ * Whether a network request would be matched by the engine's NETWORK filters.
  *
- * TODO(network): convert the engine's network filters to MV3
- * declarativeNetRequest rules at build time so blocking happens in the network
- * stack rather than per-request messaging. `@ghostery/adblocker` exposes DNR
- * conversion; wiring it (and the dynamic-rules update flow) is a deferred
- * follow-up. For now this powers an optional content-script query path only.
+ * We never actually block the request (no declarativeNetRequest): the philosophy
+ * is HIDE, NEVER BLOCK. The content script uses this verdict to HIDE the element
+ * that sourced an ad/tracker resource AFTER it loads, so the server still sees
+ * normal traffic (stealth). Network-filter exceptions (`@@…`) are respected
+ * automatically — `engine.match` returns `match:false` when an allowlist rule
+ * wins, so first-party / explicitly-unblocked resources are left alone.
  */
-export async function shouldBlockRequest(details: {
-  url: string;
-  type: string;
-  sourceUrl: string;
-}): Promise<boolean> {
-  const engine = await loadEngine();
-  if (!engine) return false;
+function matchesNetworkFilter(
+  engine: FiltersEngine,
+  details: { url: string; type: string; sourceUrl: string },
+): boolean {
   try {
     const request = Request.fromRawDetails({
       url: details.url,
@@ -153,5 +151,76 @@ export async function shouldBlockRequest(details: {
     return engine.match(request).match;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Async convenience wrapper around {@link matchesNetworkFilter} that loads the
+ * shared engine. Returns false (never throws) when the engine is unavailable.
+ */
+export async function shouldBlockRequest(details: {
+  url: string;
+  type: string;
+  sourceUrl: string;
+}): Promise<boolean> {
+  const engine = await loadEngine();
+  if (!engine) return false;
+  return matchesNetworkFilter(engine, details);
+}
+
+/** One resource a content frame wants matched against the network filters. */
+export interface ResourceQuery {
+  /** Opaque id the content script uses to map a verdict back to its element. */
+  id: number;
+  /** Absolute resource URL (iframe src, img src, …). */
+  url: string;
+  /** `@ghostery/adblocker` request type (sub_frame/image/media/script/other). */
+  type: string;
+}
+
+/**
+ * Pure resolution: given a list of {id,url,type} resources and the frame's
+ * source URL, return the ids whose URL is matched by the engine's NETWORK
+ * filters (ad/tracker), respecting exceptions. Defensive per-item so one bad URL
+ * never aborts the batch. Unit-testable with an in-memory fixture engine.
+ */
+export function matchResources(
+  engine: FiltersEngine,
+  items: ResourceQuery[],
+  sourceUrl: string,
+): number[] {
+  const matched: number[] = [];
+  for (const item of items) {
+    try {
+      if (
+        matchesNetworkFilter(engine, {
+          url: item.url,
+          type: item.type,
+          sourceUrl,
+        })
+      ) {
+        matched.push(item.id);
+      }
+    } catch {
+      // Skip this item; keep matching the rest.
+    }
+  }
+  return matched;
+}
+
+/**
+ * Async wrapper around {@link matchResources} that loads the shared engine.
+ * Returns an empty array (never throws) when the engine is unavailable.
+ */
+export async function matchResourcesForFrame(
+  items: ResourceQuery[],
+  sourceUrl: string,
+): Promise<number[]> {
+  const engine = await loadEngine();
+  if (!engine) return [];
+  try {
+    return matchResources(engine, items, sourceUrl);
+  } catch {
+    return [];
   }
 }

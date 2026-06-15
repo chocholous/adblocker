@@ -32,6 +32,18 @@ const LISTS = [
   'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt',
   'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt',
   'https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt',
+  // uBO unbreak: explicitly REDUCES false-positives by allowlisting resources
+  // that broad rules would otherwise catch. Important now that we hide elements
+  // sourced from network-filter-matched URLs (network-rules-as-cosmetic).
+  'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt',
+  // uBO quick-fixes: rapid fixes for site breakage / new ad patterns.
+  'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/quick-fixes.txt',
+  // uBO annoyances (others): misc annoyance rules beyond cookies/overlays.
+  'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances-others.txt',
+  // AdGuard URL Tracking (strips tracking params / tracker network rules).
+  'https://filters.adtidy.org/extension/ublock/filters/17_optimized.txt',
+  // Peter Lowe's ad/tracking server list (ABP format) — hostname network rules.
+  'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext',
   // Regional: EasyList Czech & Slovak — covers Sklik/Seznam/iDNES/Novinky ads.
   'https://raw.githubusercontent.com/tomasko126/easylistczechandslovak/master/filters.txt',
   // Annoyances / cookie-consent / overlays (candidates — kept only while the

@@ -68,6 +68,25 @@ export interface EngineCosmeticsResponse {
   scripts: string[];
 }
 
+/**
+ * Network-rules-as-cosmetic request. A content frame collects resource-bearing
+ * elements (iframe/img/video/source/embed/object), assigns each an id, and asks
+ * the background engine which ones point at an ad/tracker resource according to
+ * the engine's NETWORK filters. The matched elements are then HIDDEN (never
+ * blocked) — the request still completes, so the server sees normal traffic.
+ */
+export interface MatchResourcesMessage {
+  type: 'sch:matchResources';
+  /** Frame URL, used as the request's `sourceUrl` (first-party context). */
+  sourceUrl: string;
+  items: { id: number; url: string; type: string }[];
+}
+
+/** Background's reply: the ids of items matched by the network filters. */
+export interface MatchResourcesResponse {
+  matched: number[];
+}
+
 /** Result the popup receives back from the content script. */
 export type CleanupResult = DetectResponse;
 
@@ -86,4 +105,5 @@ export type RuntimeMessage =
   | DetectMessage
   | CleanupMessage
   | ClearPreviewMessage
-  | EngineCosmeticsMessage;
+  | EngineCosmeticsMessage
+  | MatchResourcesMessage;

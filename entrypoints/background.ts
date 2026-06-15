@@ -2,11 +2,17 @@ import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { settingsItem, apiKeyItem } from '@/lib/settings';
 import { detectElementsToHide } from '@/lib/anthropic';
-import { loadEngine, cosmeticsForFrame } from '@/lib/engine';
+import {
+  loadEngine,
+  cosmeticsForFrame,
+  matchResourcesForFrame,
+} from '@/lib/engine';
 import type {
   DetectResponse,
   EngineCosmeticsMessage,
   EngineCosmeticsResponse,
+  MatchResourcesMessage,
+  MatchResourcesResponse,
   PageDigest,
   RuntimeMessage,
 } from '@/lib/detect';
@@ -34,10 +40,32 @@ export default defineBackground(() => {
     if (msg?.type === 'sch:engineCosmetics') {
       return handleEngineCosmetics(msg);
     }
+    if (msg?.type === 'sch:matchResources') {
+      return handleMatchResources(msg);
+    }
     // Returning undefined lets other listeners (e.g. in content scripts) respond.
     return undefined;
   });
 });
+
+/**
+ * Match a batch of resource URLs against the engine's NETWORK filters and reply
+ * with the ids that an ad/tracker filter matched. Gated on `settings.enabled`
+ * and fully defensive so a frame's hide pass can never break. The content script
+ * HIDES the matched elements (it never blocks the request) — see lib/engine.ts.
+ */
+async function handleMatchResources(
+  msg: MatchResourcesMessage,
+): Promise<MatchResourcesResponse> {
+  try {
+    const settings = await settingsItem.getValue();
+    if (!settings.enabled) return { matched: [] };
+    const matched = await matchResourcesForFrame(msg.items, msg.sourceUrl);
+    return { matched };
+  } catch {
+    return { matched: [] };
+  }
+}
 
 /** Resolve a frame's engine cosmetics; never rejects so the frame can degrade. */
 async function handleEngineCosmetics(

@@ -7,10 +7,12 @@ import { collectDomHints } from '@/lib/dom-hints';
 import { buildPageDigest } from '@/lib/digest';
 import { serveSpoofConfig } from '@/lib/bridge';
 import { runConsentHandler } from '@/lib/consent';
+import { runHidePass, type CollectedResource } from '@/lib/net-hide';
 import type {
   CleanupResult,
   DetectResponse,
   EngineCosmeticsResponse,
+  MatchResourcesResponse,
   RuntimeMessage,
 } from '@/lib/detect';
 import '@/assets/hider.css';
@@ -49,6 +51,25 @@ async function fetchEngineCosmetics(): Promise<EngineCosmeticsResponse> {
     return res ?? { styles: '', scripts: [] };
   } catch {
     return { styles: '', scripts: [] };
+  }
+}
+
+/**
+ * Ask the background engine which of a batch of resources match an ad/tracker
+ * NETWORK filter. Returns the matched indices (into `items`). Defensive: any
+ * failure (no engine, disabled, messaging error) yields an empty match set so
+ * the hide pass simply hides nothing rather than breaking the page.
+ */
+async function matchResources(items: CollectedResource[]): Promise<number[]> {
+  try {
+    const res = (await browser.runtime.sendMessage({
+      type: 'sch:matchResources',
+      sourceUrl: location.href,
+      items: items.map((item, id) => ({ id, url: item.url, type: item.type })),
+    })) as MatchResourcesResponse | undefined;
+    return res?.matched ?? [];
+  } catch {
+    return [];
   }
 }
 
@@ -167,6 +188,51 @@ export default defineContentScript({
     // Stop re-resolving once the page has settled to bound work.
     setTimeout(() => engineObserver.disconnect(), 10000);
 
+    // Network-rules-as-cosmetic: HIDE (never block) elements whose resource URL
+    // matches one of the engine's NETWORK filters (||doubleclick.net^, …). The
+    // request still loads — we just hide the element afterwards, so the server
+    // sees normal traffic (stealth). Verdicts are cached per-URL; the pass is
+    // idempotent and fully defensive (see lib/net-hide.ts). Ads load late, so we
+    // re-run on DOM mutations (debounced ~400ms) within a bounded window.
+    const netVerdictCache = new Map<string, boolean>();
+    const runNetHidePass = async (): Promise<void> => {
+      if (!settings.enabled) return;
+      try {
+        await runHidePass(
+          document,
+          location.href,
+          matchResources,
+          netVerdictCache,
+        );
+      } catch {
+        // runHidePass is already fully guarded; this is a final belt-and-braces.
+      }
+    };
+    void runNetHidePass();
+    let netTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleNetHidePass = (): void => {
+      if (netTimer) return;
+      netTimer = setTimeout(() => {
+        netTimer = null;
+        void runNetHidePass();
+      }, 400);
+    };
+    const netObserver = new MutationObserver(() => {
+      if (settings.enabled) scheduleNetHidePass();
+    });
+    try {
+      netObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src', 'data'],
+      });
+    } catch {
+      // documentElement should always exist at document_start; ignore if not.
+    }
+    // Ads can load late, but bound the work: stop observing after 15s.
+    setTimeout(() => netObserver.disconnect(), 15000);
+
     // Keep `settings` current so the spoof config served to MAIN reflects live
     // changes, and propagate updates to the hider when active.
     settingsItem.watch((next: HiderSettings) => {
@@ -176,6 +242,7 @@ export default defineContentScript({
       hider?.setCosmetics(resolveCosmetics(next));
       hider?.update(next);
       void refreshEngineCosmetics();
+      void runNetHidePass();
     });
 
     // Popup-triggered commands. Cleanup runs only in the top frame.
