@@ -1,11 +1,11 @@
 ---
 id: TASK-018
 title: 'AI deep-clean: model tiers (Haiku/Sonnet/Opus) + vision + dual auth'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-06-15 10:16'
-updated_date: '2026-06-15 10:44'
+updated_date: '2026-06-15 10:45'
 labels:
   - feature
   - ai
@@ -31,3 +31,23 @@ Extend on-demand AI cleanup (TASK-014, Haiku-only, text digest) with: selectable
 <!-- SECTION:NOTES:BEGIN -->
 Implemented dual auth (apiKey via x-api-key; oauth via Authorization: Bearer + anthropic-beta: oauth-2025-04-20), model tiers (haiku/sonnet/opus -> claude-haiku-4-5/claude-sonnet-4-6/claude-opus-4-8), and vision mode (chrome.tabs.captureVisibleTab screenshot + digest, allow-listed). New local-only oauthTokenItem. Routed cleanup through background SW (sch:cleanupRequest -> sch:buildDigest -> capture -> Anthropic -> sch:preview). Added tests/anthropic.test.ts (mocked SDK) and e2e/popup-ai.spec.ts. gate + e2e green; clean validation 0 false-positives.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Extended the on-demand AI cleanup (TASK-014) with model tiers, vision, and dual auth, keeping runtime as pure selector matching and all selectors allow-listed/DOM-verified.
+
+Auth (user picks one, credentials stored in chrome.storage.local only):
+- API key -> x-api-key (SDK apiKey).
+- Claude subscription OAuth token -> Authorization: Bearer + anthropic-beta: oauth-2025-04-20, no x-api-key (SDK authToken). New oauthTokenItem + aiAuthMethod setting; clear error if the selected method has no credential.
+
+Model tiers: aiModel haiku|sonnet|opus -> claude-haiku-4-5 / claude-sonnet-4-6 / claude-opus-4-8 (default haiku).
+
+Vision: aiVision toggle -> background captures the visible tab via chrome.tabs.captureVisibleTab (activeTab gesture from the popup; no new host perms) and sends the screenshot as an image block plus the bounding-box digest; returned selectors remain allow-listed; degrades to text path if capture fails.
+
+Architecture: cleanup orchestrated in the background SW (sch:cleanupRequest -> sch:buildDigest in content -> optional capture -> Anthropic call -> sch:preview back to content). Popup gained the auth selector + matching input, a model dropdown, and a vision toggle.
+
+Tests/gates: tests/anthropic.test.ts (mocked SDK: both auth header shapes, model mapping, allow-list rejects non-digest selectors, missing-credential errors) and e2e/popup-ai.spec.ts (popup wiring + no-credential error path). npm run gate green (104 unit tests); e2e green (11); clean validation 0 false-positives (29/30 reachable). No protected files modified.
+
+Follow-up: no built-in OAuth token-acquisition UX (user pastes a token obtained out of band); no spend guard yet.
+<!-- SECTION:FINAL_SUMMARY:END -->
