@@ -8,6 +8,10 @@
  *  2. If no reject control can be found, HIDE the wall and UNLOCK scrolling so
  *     the page underneath is usable. Never leave a consent wall blocking.
  *
+ * Some CMPs (e.g. Sourcepoint) render their dialog in a cross-origin iframe, so
+ * besides the top frame we also run a REJECT-only pass inside vetted CMP iframes
+ * (see {@link runConsentHandlerInFrame}); there we click reject but never hide.
+ *
  * Hard requirement: ZERO false-positives. We must never click an unrelated
  * "Reject" button or hide real page content. Every action is gated behind a
  * consent-context check (the node must look like a cookie/consent dialog), and
@@ -325,11 +329,41 @@ function findConsentContainers(): Element[] {
 }
 
 /**
+ * Visible clickable controls inside a scope (button / a / role=button / input).
+ */
+function controlsIn(scope: ParentNode): Element[] {
+  try {
+    return Array.from(
+      scope.querySelectorAll(
+        'button, a, [role="button"], input[type="button"], input[type="submit"]',
+      ),
+    ).filter((el) => isVisible(el));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The scopes to search for consent controls. In a CMP IFRAME the whole frame IS
+ * the consent dialog (its URL was vetted by the caller), so the document body is
+ * the scope and per-element token gating is unnecessary. In the top frame we
+ * restrict to token-matched consent containers as before.
+ */
+function consentScopes(consentFrame: boolean): Element[] {
+  if (consentFrame) {
+    const root = document.body ?? document.documentElement;
+    return root ? [root] : [];
+  }
+  return findConsentContainers();
+}
+
+/**
  * Attempt to click a reject control. Returns true if a control was found,
  * clicked, and it sits inside a consent context. At most one click per call.
  */
-function tryReject(): boolean {
-  // 1) Known-CMP selectors (already high-precision), still gated by context.
+function tryReject(consentFrame = false): boolean {
+  // 1) Known-CMP selectors (already high-precision), still gated by context
+  //    (skipped inside a vetted CMP iframe, where the frame is the context).
   for (const sel of REJECT_SELECTORS) {
     let nodes: Element[];
     try {
@@ -339,30 +373,19 @@ function tryReject(): boolean {
     }
     for (const el of nodes) {
       if (!isVisible(el)) continue;
-      if (!isConsentContext(el)) continue;
+      if (!consentFrame && !isConsentContext(el)) continue;
       if (clickOnce(el)) return true;
     }
   }
 
   // 2) Text heuristic — STRICTLY scoped to consent containers. We only look at
   // clickable controls that live inside a node reading as a consent dialog.
-  for (const container of findConsentContainers()) {
-    let controls: Element[];
-    try {
-      controls = Array.from(
-        container.querySelectorAll(
-          'button, a, [role="button"], input[type="button"], input[type="submit"]',
-        ),
-      );
-    } catch {
-      continue;
-    }
-    for (const ctrl of controls) {
-      if (!isVisible(ctrl)) continue;
+  for (const container of consentScopes(consentFrame)) {
+    for (const ctrl of controlsIn(container)) {
       if (!REJECT_TEXT_RE.test(controlLabel(ctrl))) continue;
       // Re-check the control itself is within consent context (guards against
       // odd nesting where the container matched but the control escaped it).
-      if (!isConsentContext(ctrl)) continue;
+      if (!consentFrame && !isConsentContext(ctrl)) continue;
       if (clickOnce(ctrl)) return true;
     }
   }
@@ -456,32 +479,43 @@ function restoreScrolling(): void {
   }
 }
 
+/** Options for a handling pass / handler run. */
+interface HandleOptions {
+  /** Treat the whole frame as the consent context (vetted CMP iframe). */
+  consentFrame?: boolean;
+  /** Allow hiding the wall as a last resort. Off inside CMP iframes (pointless
+   *  — the frame IS the CMP; clicking dismisses it from the host page). */
+  allowHide?: boolean;
+}
+
 /**
- * One handling pass: reject if possible, else hide+unlock. Returns true if a
- * consent wall was acted upon (rejected OR hidden).
+ * One handling pass. Order: (1) REJECT (privacy-preserving, the default), then
+ * (2) hide+unlock as a last resort (top frame only). Returns true if a consent
+ * wall was acted upon.
  */
-function handleOnce(): boolean {
+function handleOnce(opts: HandleOptions = {}): boolean {
+  const { consentFrame = false, allowHide = true } = opts;
   try {
-    if (tryReject()) {
+    if (tryReject(consentFrame)) {
       // A reject click usually makes the CMP remove its own overlay and restore
       // scrolling, but some leave scroll-locks behind — unlock anyway.
       restoreScrolling();
       return true;
     }
-    return hideAndUnlock();
+    return allowHide ? hideAndUnlock() : false;
   } catch {
     return false;
   }
 }
 
 /**
- * Entry point. Runs a handling pass now and then watches the DOM for
- * late-injected CMPs for a bounded window. Everything is defensive; failures
- * are swallowed so the page is never broken. Intended to run in the top frame.
+ * Run a handling pass now and watch the DOM for late-injected CMPs for a bounded
+ * window. Everything is defensive; failures are swallowed so the page is never
+ * broken.
  */
-export function runConsentHandler(): void {
+function startHandling(opts: HandleOptions): void {
   try {
-    handleOnce();
+    handleOnce(opts);
   } catch {
     // ignore
   }
@@ -507,7 +541,7 @@ export function runConsentHandler(): void {
       setTimeout(() => {
         scheduled = false;
         try {
-          handleOnce();
+          handleOnce(opts);
         } catch {
           // ignore
         }
@@ -521,6 +555,21 @@ export function runConsentHandler(): void {
   } catch {
     stop();
   }
+}
+
+/** Top-frame entry point: reject → hide. */
+export function runConsentHandler(): void {
+  startHandling({ consentFrame: false, allowHide: true });
+}
+
+/**
+ * CMP-iframe entry point (e.g. Sourcepoint's cross-origin message frame). The
+ * caller has vetted the frame URL as a CMP, so the frame is the consent context.
+ * We click a REJECT control but never hide — the host page owns the iframe and a
+ * successful reject makes the CMP remove it.
+ */
+export function runConsentHandlerInFrame(): void {
+  startHandling({ consentFrame: true, allowHide: false });
 }
 
 /** Exported for unit tests only. */

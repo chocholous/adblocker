@@ -261,6 +261,31 @@ const MEASURE_FN = `(() => {
     }
   }
 
+  // CMP-vendor + ad-tech fingerprint (landscape survey). Detects which consent
+  // platform / ad stack a page uses via well-known globals + DOM markers, so a
+  // broad run reveals the REAL distribution (drives vendor-level rules, not
+  // overfitting to a dozen sites). 'tcf_generic' = an IAB TCF CMP we didn't name.
+  function has(sel){ try { return !!document.querySelector(sel); } catch { return false; } }
+  const W = window;
+  const cmp = [];
+  if (W.OneTrust || has('#onetrust-banner-sdk,#onetrust-consent-sdk')) cmp.push('onetrust');
+  if (W.Didomi || W.didomiOnReady || has('[id*="didomi" i],.didomi-popup-open')) cmp.push('didomi');
+  if (W._sp_ || W.__sp || has('iframe[src*="sourcepoint" i],iframe[src*="sp_message" i],iframe[id*="sp_message" i],iframe[src*="privacy-mgmt" i],iframe[src*="cmp" i][src*="message_id" i]')) cmp.push('sourcepoint');
+  if (W.UC_UI || W.__ucCmp || has('#usercentrics-root,#uc-center-container,[data-testid^="uc-"]')) cmp.push('usercentrics');
+  if (W.Cookiebot || has('#CybotCookiebotDialog')) cmp.push('cookiebot');
+  if (W.__cmp || has('.qc-cmp2-container,.qc-cmp-cleanslate')) cmp.push('quantcast');
+  if (W.truste || has('#truste-consent-track,.truste_box_overlay')) cmp.push('trustarc');
+  if (W.googlefc || has('.fc-consent-root,.fc-dialog-container')) cmp.push('googlefc');
+  if (typeof W.__tcfapi === 'function' && cmp.length === 0) cmp.push('tcf_generic');
+  const adtech = [];
+  if (W.googletag || has('[id^="div-gpt-ad"],iframe[id^="google_ads_iframe"]')) adtech.push('gpt');
+  if (W.adsbygoogle || has('ins.adsbygoogle')) adtech.push('adsense');
+  if (W.pbjs) adtech.push('prebid');
+  if (W.apstag) adtech.push('amazon_aps');
+  if (W._taboola || has('[id*="taboola" i]')) adtech.push('taboola');
+  if (W.OBR || W.outbrain || has('[class*="outbrain" i],[id*="outbrain" i]')) adtech.push('outbrain');
+  if (W.Criteo || W.criteo_q) adtech.push('criteo');
+
   function landmark(sel){ const el=document.querySelector(sel); return { present: !!el, visible: el?vis(el):false }; }
   const bodyText = document.body && document.body.innerText ? document.body.innerText : '';
   const txt = bodyText.replace(/\\s+/g,' ').trim();
@@ -273,6 +298,8 @@ const MEASURE_FN = `(() => {
     adSamples,
     adHostsSeen,
     consentVisible: [...new Set(consent)].slice(0,6),
+    cmp,
+    adtech,
     textLen: txt.length,
     errish,
     landmarks: { main: landmark('main'), article: landmark('article'), h1: landmark('h1'), nav: landmark('nav') },
@@ -487,6 +514,36 @@ function aggregateHosts(results) {
     .map(([h, c]) => ({ host: h, count: c }));
 }
 
+/**
+ * Landscape survey: count, across all loaded SITES, how many use each CMP vendor
+ * and each ad-tech platform (a vendor is counted once per site, deduped over its
+ * pages). This is the data that tells us what's actually out there — i.e. which
+ * vendor-level rules cover the long tail vs. one-off site quirks.
+ */
+function aggregateVendors(results) {
+  const cmp = {};
+  const adtech = {};
+  let sitesWithData = 0;
+  for (const r of results) {
+    const pages = r.pages || [];
+    if (!pages.length) continue;
+    sitesWithData += 1;
+    const cmps = new Set();
+    const techs = new Set();
+    for (const p of pages) {
+      for (const v of p.cmp || []) cmps.add(v);
+      for (const v of p.adtech || []) techs.add(v);
+    }
+    for (const v of cmps) cmp[v] = (cmp[v] || 0) + 1;
+    for (const v of techs) adtech[v] = (adtech[v] || 0) + 1;
+  }
+  const sortDesc = (obj) =>
+    Object.entries(obj)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }));
+  return { sitesWithData, cmp: sortDesc(cmp), adtech: sortDesc(adtech) };
+}
+
 function renderMd(report) {
   const L = [];
   L.push(`# Deep CDP field test (${report.set})`);
@@ -518,6 +575,20 @@ function renderMd(report) {
   for (const { host, count } of report.adHosts.slice(0, 30))
     L.push(`- \`${host}\` ×${count}`);
   L.push('');
+  if (report.vendors) {
+    const n = report.vendors.sitesWithData || 0;
+    const pct = (c) => (n ? ` (${Math.round((100 * c) / n)}%)` : '');
+    L.push(`## Landscape survey (${n} sites with data)`);
+    L.push('');
+    L.push('CMP vendors:');
+    for (const { name, count } of report.vendors.cmp)
+      L.push(`- ${name}: ${count}${pct(count)}`);
+    L.push('');
+    L.push('Ad-tech platforms:');
+    for (const { name, count } of report.vendors.adtech)
+      L.push(`- ${name}: ${count}${pct(count)}`);
+    L.push('');
+  }
   L.push('## Per-site detail');
   L.push('');
   for (const r of report.results) {
@@ -570,6 +641,7 @@ async function main() {
     sites,
     results,
     adHosts: aggregateHosts(results),
+    vendors: aggregateVendors(results),
   };
   writeFileSync(
     resolve(OUT_DIR, 'report.json'),
