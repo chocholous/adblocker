@@ -1,105 +1,624 @@
 {
-  "$schema": "Curated corpus for the validation harness. `smoke: true` marks the subset run by default (see README).",
+  "$schema": "Curated corpus for the validation harness. `smoke: true` marks the default subset; `region` (cz/de/pl/sk/uk/us/in/intl) drives deep-cdp --region filtering. See README.",
   "adHeavy": [
     {
       "url": "https://www.cnn.com/2024/01/01/politics/index.html",
-      "smoke": true
+      "smoke": true,
+      "region": "us"
     },
-    { "url": "https://www.foxnews.com/politics", "smoke": true },
-    { "url": "https://www.nbcnews.com/news", "smoke": true },
-    { "url": "https://www.usatoday.com/news/", "smoke": true },
-    { "url": "https://www.forbes.com/business/" },
-    { "url": "https://www.businessinsider.com/" },
-    { "url": "https://www.cnbc.com/world/" },
-    { "url": "https://www.dailymail.co.uk/news/index.html", "smoke": true },
-    { "url": "https://www.thesun.co.uk/news/" },
-    { "url": "https://www.mirror.co.uk/news/" },
-    { "url": "https://metro.co.uk/news/" },
-    { "url": "https://timesofindia.indiatimes.com/" },
-    { "url": "https://www.ndtv.com/india", "smoke": true },
-    { "url": "https://www.hindustantimes.com/india-news" },
-    { "url": "https://www.healthline.com/nutrition", "smoke": true },
-    { "url": "https://www.webmd.com/a-to-z-guides/common-cold" },
-    { "url": "https://people.com/" },
-    { "url": "https://www.cosmopolitan.com/" },
-    { "url": "https://www.buzzfeed.com/", "smoke": true },
-    { "url": "https://www.boredpanda.com/", "smoke": true },
-    { "url": "https://www.ign.com/" },
-    { "url": "https://www.gamespot.com/" },
-    { "url": "https://www.polygon.com/" },
-    { "url": "https://www.techradar.com/news", "smoke": true },
-    { "url": "https://www.tomshardware.com/news" },
-    { "url": "https://www.pcgamer.com/" },
-    { "url": "https://www.theverge.com/tech", "smoke": true },
-    { "url": "https://www.engadget.com/" },
-    { "url": "https://www.foodnetwork.com/recipes", "smoke": true },
-    { "url": "https://www.food.com/recipe" },
-    { "url": "https://www.delish.com/cooking/" },
-    { "url": "https://www.wikihow.com/Main-Page" },
-    { "url": "https://www.gsmarena.com/" },
-    { "url": "https://weather.com/" },
-    { "url": "https://www.accuweather.com/" },
-    { "url": "https://www.imdb.com/chart/top/", "smoke": true },
-    { "url": "https://www.espn.com/" },
-    { "url": "https://www.speedtest.net/" },
-    { "url": "https://www.bbc.com/news" },
-    { "url": "https://www.washingtonpost.com/" },
-    { "url": "https://www.theguardian.com/us" },
-    { "url": "https://www.latimes.com/" },
-    { "url": "https://nypost.com/" },
-    { "url": "https://www.express.co.uk/news" },
-    { "url": "https://www.independent.co.uk/news" },
-    { "url": "https://www.huffpost.com/" },
-    { "url": "https://www.vox.com/" },
-    { "url": "https://www.thedailybeast.com/" },
-    { "url": "https://www.newsweek.com/" },
-    { "url": "https://www.rollingstone.com/" },
-    { "url": "https://variety.com/" },
-    { "url": "https://www.hollywoodreporter.com/" },
-    { "url": "https://www.eonline.com/" },
-    { "url": "https://www.allrecipes.com/" },
-    { "url": "https://www.seriouseats.com/" },
-    { "url": "https://www.tasteofhome.com/" },
-    { "url": "https://www.androidauthority.com/" },
-    { "url": "https://www.digitaltrends.com/" },
-    { "url": "https://www.makeuseof.com/" },
-    { "url": "https://lifehacker.com/" },
-    { "url": "https://www.kotaku.com/" },
-    { "url": "https://www.cbssports.com/" }
+    {
+      "url": "https://www.foxnews.com/politics",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.nbcnews.com/news",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.usatoday.com/news/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.forbes.com/business/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.businessinsider.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.cnbc.com/world/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.dailymail.co.uk/news/index.html",
+      "smoke": true,
+      "region": "uk"
+    },
+    {
+      "url": "https://www.thesun.co.uk/news/",
+      "region": "uk"
+    },
+    {
+      "url": "https://www.mirror.co.uk/news/",
+      "region": "uk"
+    },
+    {
+      "url": "https://metro.co.uk/news/",
+      "region": "uk"
+    },
+    {
+      "url": "https://timesofindia.indiatimes.com/",
+      "region": "in"
+    },
+    {
+      "url": "https://www.ndtv.com/india",
+      "smoke": true,
+      "region": "in"
+    },
+    {
+      "url": "https://www.hindustantimes.com/india-news",
+      "region": "in"
+    },
+    {
+      "url": "https://www.healthline.com/nutrition",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.webmd.com/a-to-z-guides/common-cold",
+      "region": "us"
+    },
+    {
+      "url": "https://people.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.cosmopolitan.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.buzzfeed.com/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.boredpanda.com/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.ign.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.gamespot.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.polygon.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.techradar.com/news",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.tomshardware.com/news",
+      "region": "us"
+    },
+    {
+      "url": "https://www.pcgamer.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.theverge.com/tech",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.engadget.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.foodnetwork.com/recipes",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.food.com/recipe",
+      "region": "us"
+    },
+    {
+      "url": "https://www.delish.com/cooking/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.wikihow.com/Main-Page",
+      "region": "us"
+    },
+    {
+      "url": "https://www.gsmarena.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://weather.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.accuweather.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.imdb.com/chart/top/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.espn.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.speedtest.net/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.bbc.com/news",
+      "region": "us"
+    },
+    {
+      "url": "https://www.washingtonpost.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.theguardian.com/us",
+      "region": "us"
+    },
+    {
+      "url": "https://www.latimes.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://nypost.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.express.co.uk/news",
+      "region": "uk"
+    },
+    {
+      "url": "https://www.independent.co.uk/news",
+      "region": "uk"
+    },
+    {
+      "url": "https://www.huffpost.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.vox.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.thedailybeast.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.newsweek.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.rollingstone.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://variety.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.hollywoodreporter.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.eonline.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.allrecipes.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.seriouseats.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.tasteofhome.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.androidauthority.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.digitaltrends.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.makeuseof.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://lifehacker.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.kotaku.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.cbssports.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.bild.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.focus.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.spiegel.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.welt.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.t-online.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.chip.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.computerbild.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.n-tv.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.stern.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.kicker.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.rtl.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.augsburger-allgemeine.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.onet.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.wp.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.interia.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.gazeta.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.o2.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.fakt.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.se.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://tvn24.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.money.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.sport.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://pudelek.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://natemat.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.sme.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.aktuality.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.pravda.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.cas.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.topky.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.pluska.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://sport.aktuality.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.zive.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://dennikn.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.trend.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.nydailynews.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.chicagotribune.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.sfgate.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.nj.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.cleveland.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.tmz.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://pagesix.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://deadline.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.complex.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.thewrap.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.thrillist.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.mensjournal.com/",
+      "region": "us"
+    }
   ],
   "clean": [
-    { "url": "https://en.wikipedia.org/wiki/Web_browser", "smoke": true },
+    {
+      "url": "https://en.wikipedia.org/wiki/Web_browser",
+      "smoke": true,
+      "region": "us"
+    },
     {
       "url": "https://developer.mozilla.org/en-US/docs/Web/HTML",
-      "smoke": true
+      "smoke": true,
+      "region": "us"
     },
-    { "url": "https://github.com/microsoft/TypeScript", "smoke": true },
-    { "url": "https://stackoverflow.com/questions/178325", "smoke": true },
-    { "url": "https://www.gov.uk/", "smoke": true },
-    { "url": "https://www.nasa.gov/", "smoke": true },
-    { "url": "https://archive.org/", "smoke": true },
-    { "url": "https://news.ycombinator.com/", "smoke": true },
-    { "url": "https://www.gnu.org/" },
-    { "url": "https://www.python.org/" },
-    { "url": "https://nodejs.org/en" },
-    { "url": "https://www.w3.org/" },
-    { "url": "https://www.kernel.org/" },
-    { "url": "https://signal.org/en/" },
-    { "url": "https://www.who.int/" },
-    { "url": "https://arxiv.org/" },
-    { "url": "https://www.gutenberg.org/" },
-    { "url": "https://example.com/" },
-    { "url": "https://www.rfc-editor.org/" },
-    { "url": "https://opensource.org/" },
-    { "url": "https://www.mozilla.org/en-US/" },
-    { "url": "https://wikimediafoundation.org/" },
-    { "url": "https://www.debian.org/" },
-    { "url": "https://www.apache.org/" },
-    { "url": "https://golang.org/" },
-    { "url": "https://www.rust-lang.org/" },
-    { "url": "https://www.postgresql.org/" },
-    { "url": "https://www.sqlite.org/index.html" },
-    { "url": "https://httpd.apache.org/" },
-    { "url": "https://www.openstreetmap.org/" }
+    {
+      "url": "https://github.com/microsoft/TypeScript",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://stackoverflow.com/questions/178325",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.gov.uk/",
+      "smoke": true,
+      "region": "uk"
+    },
+    {
+      "url": "https://www.nasa.gov/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://archive.org/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://news.ycombinator.com/",
+      "smoke": true,
+      "region": "us"
+    },
+    {
+      "url": "https://www.gnu.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.python.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://nodejs.org/en",
+      "region": "us"
+    },
+    {
+      "url": "https://www.w3.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.kernel.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://signal.org/en/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.who.int/",
+      "region": "us"
+    },
+    {
+      "url": "https://arxiv.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.gutenberg.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://example.com/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.rfc-editor.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://opensource.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.mozilla.org/en-US/",
+      "region": "us"
+    },
+    {
+      "url": "https://wikimediafoundation.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.debian.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.apache.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://golang.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.rust-lang.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.postgresql.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.sqlite.org/index.html",
+      "region": "us"
+    },
+    {
+      "url": "https://httpd.apache.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.openstreetmap.org/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.bund.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://www.bundesregierung.de/",
+      "region": "de"
+    },
+    {
+      "url": "https://de.wikipedia.org/wiki/Webbrowser",
+      "region": "de"
+    },
+    {
+      "url": "https://www.gov.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.sejm.gov.pl/",
+      "region": "pl"
+    },
+    {
+      "url": "https://pl.wikipedia.org/wiki/Przegl%C4%85darka_internetowa",
+      "region": "pl"
+    },
+    {
+      "url": "https://www.slovensko.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.nrsr.sk/",
+      "region": "sk"
+    },
+    {
+      "url": "https://sk.wikipedia.org/wiki/Webov%C3%BD_prehliada%C4%8D",
+      "region": "sk"
+    },
+    {
+      "url": "https://www.usa.gov/",
+      "region": "us"
+    },
+    {
+      "url": "https://www.loc.gov/",
+      "region": "us"
+    }
   ]
 }
