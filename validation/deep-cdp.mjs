@@ -491,7 +491,10 @@ async function main() {
   const context = browser.contexts()[0];
 
   const results = await runPool(context, sites, shotsDir);
-  await browser.close().catch(() => {});
+  // IMPORTANT: do NOT call browser.close() — over a connectOverCDP connection
+  // that closes the *remote* browser (kills the shared Chrome). We only want to
+  // drop our connection. Closing each page we opened (in processSite) is enough;
+  // here we just let the WebSocket close when the process exits.
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -509,6 +512,9 @@ async function main() {
   writeFileSync(resolve(OUT_DIR, 'report.md'), renderMd(report));
   console.log(`\n[deep] wrote ${OUT_DIR}/report.json and report.md`);
   console.log('\n' + renderMd(report));
+  // Exit explicitly so the lingering CDP WebSocket doesn't keep the process
+  // alive. Dropping the socket on exit disconnects WITHOUT closing the browser.
+  process.exit(0);
 }
 
 main().catch((e) => {
