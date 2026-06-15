@@ -1,11 +1,11 @@
 ---
 id: TASK-009
 title: 'Phase 8 — Tooling, CI & quality gates'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-06-14 12:45'
-updated_date: '2026-06-14 14:22'
+updated_date: '2026-06-15 10:01'
 labels:
   - phase-8
   - ci
@@ -22,7 +22,7 @@ ESLint+Prettier, CI, pre-commit hook shipped. Remaining: zip artifact, dependabo
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A PR shows green lint+typecheck+test+build, with the built zip attached as an artifact
+- [x] #1 A PR shows green lint+typecheck+test+build, with the built zip attached as an artifact
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -34,8 +34,14 @@ ESLint+Prettier, CI, pre-commit hook shipped. Remaining: zip artifact, dependabo
 4. Commit + push + draft PR; po zelené CI ověřit AC #1 (zip artefakt v běhu) a mergnout
 <!-- SECTION:PLAN:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+CI/tooling complete: ESLint+Prettier, GitHub Actions gate (format/lint/types/test/build) + e2e job, store-ready zip artifact, pre-commit lint-staged, Dependabot, and weekly filter-list auto-update workflow.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 All quality gates green (npm run gate)
+- [x] #1 All quality gates green (npm run gate)
 - [ ] #2 Docs updated if behavior changed
 <!-- DOD:END -->
