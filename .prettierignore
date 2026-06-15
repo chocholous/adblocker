@@ -8,3 +8,6 @@ package-lock.json
 
 # Backlog.md manages its own file format; don't let Prettier fight it.
 backlog
+
+# Shared-CDP dev harness (standalone Node scripts, not shipped)
+scripts/cdp-share

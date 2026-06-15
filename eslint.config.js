@@ -12,6 +12,8 @@ export default tseslint.config(
       'coverage/**',
       // Standalone dev validation harness (Node script, not shipped code).
       'validation/**',
+      // Shared-CDP dev harness (standalone Node scripts, not shipped code).
+      'scripts/cdp-share/**',
     ],
   },
   js.configs.recommended,
