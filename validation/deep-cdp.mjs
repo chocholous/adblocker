@@ -190,9 +190,12 @@ const MEASURE_FN = `(() => {
   for (const sel of CONSENT_SELECTORS) {
     let nodes; try { nodes = document.querySelectorAll(sel); } catch { continue; }
     for (const el of nodes) {
+      // Skip inline links/controls (e.g. a footer "Nastaveni cookies" link such
+      // as a.atm-cmp-link) — a real wall is a large structural block, not a link.
+      if (['A','BUTTON','SPAN','LABEL','LI'].includes(el.tagName)) continue;
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
-      const shown = s.display!=='none' && s.visibility!=='hidden' && r.width*r.height>2000;
+      const shown = s.display!=='none' && s.visibility!=='hidden' && r.width*r.height>20000;
       if (shown) { consent.push(desc(el)); break; }
     }
   }
@@ -491,7 +494,10 @@ async function main() {
   const context = browser.contexts()[0];
 
   const results = await runPool(context, sites, shotsDir);
-  await browser.close().catch(() => {});
+  // IMPORTANT: do NOT call browser.close() — over a connectOverCDP connection
+  // that closes the *remote* browser (kills the shared Chrome). We only want to
+  // drop our connection. Closing each page we opened (in processSite) is enough;
+  // here we just let the WebSocket close when the process exits.
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -509,6 +515,9 @@ async function main() {
   writeFileSync(resolve(OUT_DIR, 'report.md'), renderMd(report));
   console.log(`\n[deep] wrote ${OUT_DIR}/report.json and report.md`);
   console.log('\n' + renderMd(report));
+  // Exit explicitly so the lingering CDP WebSocket doesn't keep the process
+  // alive. Dropping the socket on exit disconnects WITHOUT closing the browser.
+  process.exit(0);
 }
 
 main().catch((e) => {
