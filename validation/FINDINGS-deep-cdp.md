@@ -28,14 +28,23 @@ Root cause (diagnosed live over CDP):
    also fails to populate its own UI there — its scripts load but render nothing,
    consistent with its own anti-adblock; even un-hidden the dialog is empty.)
 
+**Verified site-side, not our FP:** with the extension **disabled**,
+`cmp.seznam.cz` is _still_ blank (text=0, dialog `childElementCount=0`, no
+buttons). Seznam's CMP refuses to render its UI in this automated
+Chrome-for-Testing profile regardless of our extension — so the blank is the
+site's own anti-automation/anti-adblock, not something we cause. On a normal
+everyday-Chrome profile the CMP renders and the user makes a one-time choice,
+after which articles open.
+
 **Shipped in this PR (defensive):** consent handler now (a) never hides a wall
 that would blank the page (`wouldBlankPage`, ≥90% of rendered text + <150 chars
 remaining → keep), and (b) won't hide tiny inline links that merely carry a
-consent token (`isHideableWall`, e.g. Seznam footer `a.atm-cmp-link`).
+consent token (`isHideableWall`, e.g. Seznam footer `a.atm-cmp-link`). This
+guarantees we never _contribute_ to the blank.
 
-**Follow-up (real fix):** run consent **reject** inside same-origin CMP iframes
-on the landing (`…/html/cmp.html`) so a decision is stored and articles never
-redirect. This is the only way to actually unblock Seznam article reading.
+**Not pursued — iframe-reject:** running reject inside the CMP iframe was
+considered, but since the CMP renders no UI at all (verified above) there is
+nothing to click; it would be dead code.
 
 ## Remaining ad gaps (filter-improvement targets)
 

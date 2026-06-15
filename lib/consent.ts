@@ -27,6 +27,10 @@ const REJECT_SELECTORS: readonly string[] = [
   '#didomi-notice-disagree-button',
   'button.didomi-dismiss-button',
   'button.didomi-components-button--decline',
+  '.didomi-continue-without-agreeing',
+  // Google Funding Choices (`fc-consent-root`): "Do not consent" / "Manage".
+  '.fc-cta-do-not-consent',
+  '.fc-button.fc-cta-do-not-consent',
   // Cookiebot
   '#CybotCookiebotDialogBodyButtonDecline',
   '#CybotCookiebotDialogBodyLevelButtonLevelOptinDeclineAll',

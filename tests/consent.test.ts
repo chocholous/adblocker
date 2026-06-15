@@ -71,6 +71,37 @@ describe('consent handler — reject path', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
+  it('clicks Google Funding Choices "Do not consent"', () => {
+    document.body.innerHTML = `
+      <div class="fc-consent-root">
+        <div class="fc-dialog">
+          <p>We and our partners use cookies.</p>
+          <button class="fc-button fc-cta-consent">Consent</button>
+          <button class="fc-button fc-cta-do-not-consent">Do not consent</button>
+        </div>
+      </div>`;
+    const spy = vi.fn();
+    document
+      .querySelector('.fc-cta-do-not-consent')!
+      .addEventListener('click', spy);
+    expect(handleOnce()).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('clicks Didomi "Continue without agreeing"', () => {
+    document.body.innerHTML = `
+      <div id="didomi-host" class="didomi-popup-open">
+        <p>We value your privacy and use cookies.</p>
+        <button class="didomi-continue-without-agreeing">Continue without accepting</button>
+      </div>`;
+    const spy = vi.fn();
+    document
+      .querySelector('.didomi-continue-without-agreeing')!
+      .addEventListener('click', spy);
+    expect(handleOnce()).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
   it('clicks at most once per CMP (idempotent across passes)', () => {
     document.body.innerHTML = `
       <div class="cookie-consent" role="dialog">
