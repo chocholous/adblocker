@@ -96,6 +96,14 @@
 
       <section class="ai">
         <label class="field">
+          <span>Authentication</span>
+          <select id="aiAuthMethod">
+            <option value="apiKey">API key (BYO)</option>
+            <option value="oauth">Claude subscription (OAuth token)</option>
+          </select>
+        </label>
+
+        <label class="field" id="apiKeyField">
           <span
             >Anthropic API key <small>(stored locally, not synced)</small></span
           >
@@ -106,6 +114,34 @@
             autocomplete="off"
           />
         </label>
+
+        <label class="field" id="oauthField" hidden>
+          <span
+            >Claude OAuth token
+            <small>(stored locally, not synced)</small></span
+          >
+          <input
+            type="password"
+            id="oauthToken"
+            placeholder="sk-ant-oat..."
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="field">
+          <span>Model</span>
+          <select id="aiModel">
+            <option value="haiku">Haiku (fast, cheap)</option>
+            <option value="sonnet">Sonnet (balanced)</option>
+            <option value="opus">Opus (most capable)</option>
+          </select>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="aiVision" />
+          <span>Vision mode <small>(send a screenshot)</small></span>
+        </label>
+
         <button id="cleanup" type="button" class="secondary">
           Clean up this page (AI)
         </button>

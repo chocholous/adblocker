@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS,
   serializeSettings,
   parseSettings,
+  AI_MODEL_IDS,
   type HiderSettings,
 } from '../lib/settings';
 
@@ -16,6 +17,9 @@ describe('settings import/export round-trip', () => {
       cosmeticFilters:
         'example.com##.banner\nexample.com##div.card:has-text(Sponsored)',
       dismissConsent: false,
+      aiAuthMethod: 'oauth',
+      aiModel: 'sonnet',
+      aiVision: true,
     };
 
     const restored = parseSettings(serializeSettings(settings));
@@ -33,6 +37,9 @@ describe('settings import/export round-trip', () => {
     const obj = JSON.parse(json);
     expect(Object.keys(obj).sort()).toEqual(
       [
+        'aiAuthMethod',
+        'aiModel',
+        'aiVision',
         'cosmeticFilters',
         'dismissConsent',
         'enabled',
@@ -54,6 +61,31 @@ describe('settings import/export round-trip', () => {
     const restored = parseSettings(legacy);
     expect(restored.cosmeticFilters).toBe('');
     expect(restored.hideSelectors).toEqual(['.ad']);
+  });
+
+  it('backfills the AI deep-clean fields to their defaults from an older export', () => {
+    // A v3-era export predates aiAuthMethod / aiModel / aiVision.
+    const legacy = JSON.stringify({
+      enabled: true,
+      hideSelectors: ['.ad'],
+      removeSelectors: [],
+      spoofAntiAdblock: true,
+      cosmeticFilters: '',
+      dismissConsent: true,
+    });
+    const restored = parseSettings(legacy);
+    expect(restored.aiAuthMethod).toBe('apiKey');
+    expect(restored.aiModel).toBe('haiku');
+    expect(restored.aiVision).toBe(false);
+  });
+
+  it('rejects invalid enum values for aiAuthMethod / aiModel', () => {
+    expect(() =>
+      parseSettings(JSON.stringify({ aiAuthMethod: 'nope' })),
+    ).toThrow(/aiAuthMethod/);
+    expect(() => parseSettings(JSON.stringify({ aiModel: 'gpt' }))).toThrow(
+      /aiModel/,
+    );
   });
 
   it('backfills dismissConsent to its default (true) from an older export', () => {
@@ -90,5 +122,15 @@ describe('settings import/export round-trip', () => {
   it('rejects non-object top-level JSON', () => {
     expect(() => parseSettings('[]')).toThrow(/settings object/);
     expect(() => parseSettings('"x"')).toThrow(/settings object/);
+  });
+});
+
+describe('AI_MODEL_IDS', () => {
+  it('maps each tier to its concrete Anthropic model id', () => {
+    expect(AI_MODEL_IDS).toEqual({
+      haiku: 'claude-haiku-4-5',
+      sonnet: 'claude-sonnet-4-6',
+      opus: 'claude-opus-4-8',
+    });
   });
 });

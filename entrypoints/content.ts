@@ -10,8 +10,7 @@ import { runConsentHandler } from '@/lib/consent';
 import { runHidePass, type CollectedResource } from '@/lib/net-hide';
 import { startPicker } from '@/lib/picker';
 import type {
-  CleanupResult,
-  DetectResponse,
+  BuildDigestResponse,
   EngineCosmeticsResponse,
   MatchResourcesResponse,
   RuntimeMessage,
@@ -91,20 +90,17 @@ function clearPreview(): void {
   document.getElementById(PREVIEW_STYLE_ID)?.remove();
 }
 
-/** Build a digest, ask the background to call Haiku, then preview the result. */
-async function runCleanup(): Promise<CleanupResult> {
+/**
+ * Build a bounded page digest for the AI cleanup. The background orchestrates
+ * the actual model call (and the optional screenshot capture); the content
+ * script just contributes the structural digest from the live DOM.
+ */
+function buildDigest(): BuildDigestResponse {
   const digest = buildPageDigest();
   if (digest.nodes.length === 0) {
     return { ok: false, error: 'No candidate elements found on this page.' };
   }
-  const res = (await browser.runtime.sendMessage({
-    type: 'sch:detect',
-    digest,
-  })) as DetectResponse;
-  if (res.ok) {
-    applyPreview(res.rules.map((r) => r.selector));
-  }
-  return res;
+  return { ok: true, digest };
 }
 
 /**
@@ -249,8 +245,14 @@ export default defineContentScript({
     // Popup-triggered commands. Cleanup runs only in the top frame.
     browser.runtime.onMessage.addListener((message: unknown) => {
       const msg = message as RuntimeMessage | undefined;
-      if (msg?.type === 'sch:cleanup' && window.top === window) {
-        return runCleanup();
+      // Digest building runs only in the top frame (cleanup targets the main
+      // document). Returned synchronously to the background orchestrator.
+      if (msg?.type === 'sch:buildDigest' && window.top === window) {
+        return Promise.resolve(buildDigest());
+      }
+      if (msg?.type === 'sch:preview' && window.top === window) {
+        applyPreview(msg.selectors);
+        return Promise.resolve({ ok: true });
       }
       if (msg?.type === 'sch:clearPreview') {
         clearPreview();

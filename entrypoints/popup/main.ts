@@ -1,12 +1,15 @@
 import {
   settingsItem,
   apiKeyItem,
+  oauthTokenItem,
   serializeSettings,
   parseSettings,
   type HiderSettings,
+  type AiAuthMethod,
+  type AiModelTier,
 } from '@/lib/settings';
 import { browser } from 'wxt/browser';
-import type { CleanupResult, DetectedRule } from '@/lib/detect';
+import type { DetectResponse, DetectedRule } from '@/lib/detect';
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -28,6 +31,12 @@ const ioText = $<HTMLTextAreaElement>('ioText');
 const ioStatus = $<HTMLSpanElement>('ioStatus');
 
 const apiKey = $<HTMLInputElement>('apiKey');
+const oauthToken = $<HTMLInputElement>('oauthToken');
+const aiAuthMethod = $<HTMLSelectElement>('aiAuthMethod');
+const aiModel = $<HTMLSelectElement>('aiModel');
+const aiVision = $<HTMLInputElement>('aiVision');
+const apiKeyField = $<HTMLLabelElement>('apiKeyField');
+const oauthField = $<HTMLLabelElement>('oauthField');
 const cleanup = $<HTMLButtonElement>('cleanup');
 const aiStatus = $<HTMLSpanElement>('aiStatus');
 const results = $<HTMLDivElement>('results');
@@ -43,6 +52,13 @@ const linesToList = (text: string): string[] =>
 
 /* ---------- core settings ---------- */
 
+/** Show the input matching the selected auth method; hide the other. */
+function syncAuthMethodUi(): void {
+  const oauth = aiAuthMethod.value === 'oauth';
+  apiKeyField.hidden = oauth;
+  oauthField.hidden = !oauth;
+}
+
 async function load(): Promise<void> {
   const s = await settingsItem.getValue();
   enabled.checked = s.enabled;
@@ -51,7 +67,12 @@ async function load(): Promise<void> {
   cosmeticFilters.value = s.cosmeticFilters;
   spoofAntiAdblock.checked = s.spoofAntiAdblock;
   dismissConsent.checked = s.dismissConsent;
+  aiAuthMethod.value = s.aiAuthMethod;
+  aiModel.value = s.aiModel;
+  aiVision.checked = s.aiVision;
   apiKey.value = await apiKeyItem.getValue();
+  oauthToken.value = await oauthTokenItem.getValue();
+  syncAuthMethodUi();
 }
 
 async function save(): Promise<void> {
@@ -64,6 +85,9 @@ async function save(): Promise<void> {
     cosmeticFilters: cosmeticFilters.value,
     spoofAntiAdblock: spoofAntiAdblock.checked,
     dismissConsent: dismissConsent.checked,
+    aiAuthMethod: aiAuthMethod.value as AiAuthMethod,
+    aiModel: aiModel.value as AiModelTier,
+    aiVision: aiVision.checked,
   };
   await settingsItem.setValue(next);
   status.textContent = 'Saved';
@@ -71,10 +95,18 @@ async function save(): Promise<void> {
 }
 
 $('save').addEventListener('click', () => void save());
+// Credentials are stored locally (never synced) and persisted on change, like
+// the existing API key. The auth-method/model/vision selectors persist with the
+// main Save (they live in the synced HiderSettings).
 apiKey.addEventListener(
   'change',
   () => void apiKeyItem.setValue(apiKey.value.trim()),
 );
+oauthToken.addEventListener(
+  'change',
+  () => void oauthTokenItem.setValue(oauthToken.value.trim()),
+);
+aiAuthMethod.addEventListener('change', syncAuthMethodUi);
 
 /* ---------- import / export ---------- */
 
@@ -152,15 +184,26 @@ async function runCleanup(): Promise<void> {
     return;
   }
   cleanup.disabled = true;
-  aiStatus.textContent = 'Analyzing page…';
+  aiStatus.textContent = aiVision.checked
+    ? 'Analyzing page (vision)…'
+    : 'Analyzing page…';
   try {
-    const res = (await browser.tabs.sendMessage(tabId, {
-      type: 'sch:cleanup',
-    })) as CleanupResult;
+    // The background SW owns the privileged work (screenshot capture + the
+    // Anthropic call). We invoke it from this click so the activeTab gesture is
+    // available for captureVisibleTab in vision mode.
+    const res = (await browser.runtime.sendMessage({
+      type: 'sch:cleanupRequest',
+      tabId,
+    })) as DetectResponse;
     if (!res.ok) {
       aiStatus.textContent = res.error;
       return;
     }
+    // Apply the preview in the page (temporary, unsaved).
+    await browser.tabs.sendMessage(tabId, {
+      type: 'sch:preview',
+      selectors: res.rules.map((r) => r.selector),
+    });
     aiStatus.textContent = `Found ${res.rules.length} — previewing.`;
     renderRules(res.rules);
   } catch {
