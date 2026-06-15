@@ -27,11 +27,19 @@
  *
  * Flags:
  *   --set=cz|intl|clean|all   target group (default cz)
+ *   --region=de,pl,sk,us,…    filter the pool by region (cz/de/pl/sk/uk/us/in)
+ *   --fresh=N                 test the N least-recently-tested sites (ledger-
+ *                             backed rotation, so each retest covers new ground)
  *   --concurrency=N           parallel tabs (default 3)
  *   --articles=N              articles to open per site (default 2)
  *   --limit=N                 cap number of sites
  *   --out=DIR                 report/screenshot dir (default /tmp/sch-deep)
  *   --shots                   also save full-page screenshots (evidence)
+ *
+ * Freshness ledger: validation/tested-ledger.json (committed) maps url ->
+ * last-tested ISO time; `--fresh` reads it to pick the stalest sites and the run
+ * stamps every loaded site afterward. Commit it so rotation persists across
+ * (ephemeral) cloud sessions.
  *
  * Artifacts (NOT committed): <out>/report.json, <out>/report.md, <out>/shots/*.
  */
@@ -50,6 +58,7 @@ const val = (k, d) => {
   return a ? a.split('=')[1] : d;
 };
 const SET = val('set', 'cz');
+const SET_EXPLICIT = args.some((a) => a.startsWith('--set='));
 const CONCURRENCY = Math.max(1, parseInt(val('concurrency', '3'), 10));
 const ARTICLES = Math.max(0, parseInt(val('articles', '2'), 10));
 const LIMIT = parseInt(val('limit', '0'), 10) || 0;
@@ -58,6 +67,15 @@ const SHOTS = args.includes('--shots');
 const URLS_FILE = val('urlsfile', '');
 const NAV_TIMEOUT = parseInt(val('navtimeout', '30000'), 10) || 30000;
 const KIND_DEFAULT = val('kind', 'ad');
+// Comma-separated region filter (cz,de,pl,sk,uk,us,in). Empty = no filter.
+const REGIONS = val('region', '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+// --fresh=N: pick the N least-recently-tested sites from the selected pool,
+// using a committed ledger (so each retest naturally covers fresh ground).
+const FRESH = parseInt(val('fresh', '0'), 10) || 0;
+const LEDGER_FILE = resolve(here, 'tested-ledger.json');
 
 const CDP = process.env.CDP_ENDPOINT;
 if (!CDP) {
@@ -71,26 +89,47 @@ if (!CDP) {
 // CZ ad-heavy properties the user cares about + a clutch of clean CZ sites to
 // guard the zero-false-positive promise. International + clean reuse the corpus.
 const CZ = [
-  { url: 'https://www.idnes.cz/', kind: 'ad' },
-  { url: 'https://www.novinky.cz/', kind: 'ad' },
-  { url: 'https://www.sport.cz/', kind: 'ad' },
-  { url: 'https://www.seznamzpravy.cz/', kind: 'ad' },
-  { url: 'https://www.blesk.cz/', kind: 'ad' },
-  { url: 'https://www.reflex.cz/', kind: 'ad' },
-  { url: 'https://www.aktualne.cz/', kind: 'ad' },
-  { url: 'https://www.denik.cz/', kind: 'ad' },
-  { url: 'https://www.lidovky.cz/', kind: 'ad' },
-  { url: 'https://www.e15.cz/', kind: 'ad' },
-  { url: 'https://www.super.cz/', kind: 'ad' },
-  { url: 'https://www.expres.cz/', kind: 'ad' },
+  { url: 'https://www.idnes.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.novinky.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.sport.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.seznamzpravy.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.blesk.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.reflex.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.aktualne.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.denik.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.lidovky.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.e15.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.super.cz/', kind: 'ad', region: 'cz' },
+  { url: 'https://www.expres.cz/', kind: 'ad', region: 'cz' },
   // clean CZ references (must NOT lose content / go blank)
-  { url: 'https://cs.wikipedia.org/wiki/Praha', kind: 'clean' },
-  { url: 'https://www.mojedatovaschranka.cz/', kind: 'clean' },
+  { url: 'https://cs.wikipedia.org/wiki/Praha', kind: 'clean', region: 'cz' },
+  { url: 'https://www.mojedatovaschranka.cz/', kind: 'clean', region: 'cz' },
 ];
 
 const corpusJson = JSON.parse(
   readFileSync(resolve(here, 'corpus.json'), 'utf8'),
 );
+
+/** Read the freshness ledger ({ url: lastTestedISO }); empty on any failure. */
+function readLedger() {
+  try {
+    return JSON.parse(readFileSync(LEDGER_FILE, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+/** Stamp the just-tested URLs with `now` and persist the ledger. */
+function updateLedger(urls) {
+  const ledger = readLedger();
+  const now = new Date().toISOString();
+  for (const u of urls) ledger[u] = now;
+  try {
+    writeFileSync(LEDGER_FILE, JSON.stringify(ledger, null, 2) + '\n');
+  } catch {
+    // best-effort; a ledger write failure must not fail the run
+  }
+}
 
 function targets() {
   // Explicit URL list (e.g. re-running a previous run's timed-out sites).
@@ -106,19 +145,41 @@ function targets() {
     }));
     return LIMIT ? list.slice(0, LIMIT) : list;
   }
-  let list;
-  if (SET === 'cz') list = CZ;
-  else if (SET === 'intl')
-    list = corpusJson.adHeavy.map((e) => ({ url: e.url, kind: 'ad' }));
-  else if (SET === 'clean')
-    list = corpusJson.clean.map((e) => ({ url: e.url, kind: 'clean' }));
-  else
-    list = [
-      ...CZ,
-      ...corpusJson.adHeavy.map((e) => ({ url: e.url, kind: 'ad' })),
-      ...corpusJson.clean.map((e) => ({ url: e.url, kind: 'clean' })),
-    ];
-  return LIMIT ? list.slice(0, LIMIT) : list;
+
+  // Build the candidate pool from the chosen set (CZ hardcoded list + corpus).
+  const corpusAd = corpusJson.adHeavy.map((e) => ({
+    url: e.url,
+    kind: 'ad',
+    region: e.region || 'us',
+  }));
+  const corpusClean = corpusJson.clean.map((e) => ({
+    url: e.url,
+    kind: 'clean',
+    region: e.region || 'us',
+  }));
+  // A region filter without an explicit --set searches the WHOLE corpus (the
+  // default cz set would otherwise filter to nothing for de/pl/sk/us).
+  const effectiveSet = REGIONS.length && !SET_EXPLICIT ? 'all' : SET;
+  let pool;
+  if (effectiveSet === 'cz') pool = CZ;
+  else if (effectiveSet === 'intl') pool = corpusAd;
+  else if (effectiveSet === 'clean') pool = corpusClean;
+  else pool = [...CZ, ...corpusAd, ...corpusClean];
+
+  // Optional region filter (CZ entries carry region:'cz').
+  if (REGIONS.length)
+    pool = pool.filter((e) => REGIONS.includes((e.region || '').toLowerCase()));
+
+  // --fresh=N: order by least-recently-tested (never-tested first) and take N,
+  // so consecutive retests rotate through new sites automatically.
+  if (FRESH > 0) {
+    const ledger = readLedger();
+    const rank = (e) => ledger[e.url] || ''; // '' (never tested) sorts first
+    pool = [...pool].sort((a, b) => rank(a).localeCompare(rank(b)));
+    return pool.slice(0, FRESH);
+  }
+
+  return LIMIT ? pool.slice(0, LIMIT) : pool;
 }
 
 // ---- In-page measurement (string IIFE for page.evaluate) -----------------
@@ -494,6 +555,8 @@ async function main() {
   const context = browser.contexts()[0];
 
   const results = await runPool(context, sites, shotsDir);
+  // Stamp every site we actually loaded so --fresh rotates onward next time.
+  updateLedger(results.filter((r) => (r.pages || []).length).map((r) => r.url));
   // IMPORTANT: do NOT call browser.close() — over a connectOverCDP connection
   // that closes the *remote* browser (kills the shared Chrome). We only want to
   // drop our connection. Closing each page we opened (in processSite) is enough;
