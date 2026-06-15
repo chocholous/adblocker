@@ -198,4 +198,31 @@ cleanup.addEventListener('click', () => void runCleanup());
 saveRules.addEventListener('click', () => void saveSelectedRules());
 clearPreviewBtn.addEventListener('click', () => void clearPreview());
 
+/* ---------- element picker ---------- */
+
+const pick = $<HTMLButtonElement>('pick');
+const pickStatus = $<HTMLSpanElement>('pickStatus');
+
+/**
+ * Activate the point-and-click picker in the active tab and close the popup so
+ * the user can interact with the page. The picker lives in the content script;
+ * we just send the trigger message.
+ */
+async function startPicker(): Promise<void> {
+  const tabId = await activeTabId();
+  if (tabId == null) {
+    pickStatus.textContent = 'No active tab.';
+    return;
+  }
+  try {
+    await browser.tabs.sendMessage(tabId, { type: 'sch:startPicker' });
+    // Close the popup so the page (and the picker overlay) is interactive.
+    window.close();
+  } catch {
+    pickStatus.textContent = "This page can't be edited (no content script).";
+  }
+}
+
+pick.addEventListener('click', () => void startPicker());
+
 void load();

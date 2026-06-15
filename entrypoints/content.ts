@@ -8,6 +8,7 @@ import { buildPageDigest } from '@/lib/digest';
 import { serveSpoofConfig } from '@/lib/bridge';
 import { runConsentHandler } from '@/lib/consent';
 import { runHidePass, type CollectedResource } from '@/lib/net-hide';
+import { startPicker } from '@/lib/picker';
 import type {
   CleanupResult,
   DetectResponse,
@@ -253,6 +254,13 @@ export default defineContentScript({
       }
       if (msg?.type === 'sch:clearPreview') {
         clearPreview();
+        return Promise.resolve({ ok: true });
+      }
+      // Element picker: top frame only (the user interacts with the main
+      // document). Fully guarded inside startPicker so it can never break the
+      // page.
+      if (msg?.type === 'sch:startPicker' && window.top === window) {
+        startPicker();
         return Promise.resolve({ ok: true });
       }
       return undefined;

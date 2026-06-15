@@ -101,9 +101,14 @@ export interface CleanupMessage {
 export interface ClearPreviewMessage {
   type: 'sch:clearPreview';
 }
+/** Popup → content (top frame): activate the point-and-click element picker. */
+export interface StartPickerMessage {
+  type: 'sch:startPicker';
+}
 export type RuntimeMessage =
   | DetectMessage
   | CleanupMessage
   | ClearPreviewMessage
+  | StartPickerMessage
   | EngineCosmeticsMessage
   | MatchResourcesMessage;
