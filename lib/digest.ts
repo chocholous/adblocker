@@ -130,6 +130,7 @@ export function buildPageDigest(maxNodes = 120): PageDigest {
     url: location.hostname + location.pathname,
     title: document.title.slice(0, 120),
     viewport: [vw, vh],
+    dpr: window.devicePixelRatio || 1,
     nodes,
   };
 }

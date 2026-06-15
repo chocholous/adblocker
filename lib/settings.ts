@@ -1,6 +1,27 @@
 import { storage } from 'wxt/utils/storage';
 
 /**
+ * Authentication method for the on-demand AI cleanup feature.
+ * - `apiKey`: a BYO Anthropic API key (`x-api-key` header).
+ * - `oauth`: a Claude subscription OAuth access token (`Authorization: Bearer`).
+ */
+export type AiAuthMethod = 'apiKey' | 'oauth';
+
+/** Selectable Claude model tier for the on-demand AI cleanup feature. */
+export type AiModelTier = 'haiku' | 'sonnet' | 'opus';
+
+/**
+ * Map a {@link AiModelTier} to the concrete Anthropic model ID used in the call.
+ * Kept here (not in lib/anthropic.ts) so it has no SDK dependency and stays
+ * unit-testable in isolation.
+ */
+export const AI_MODEL_IDS: Record<AiModelTier, string> = {
+  haiku: 'claude-haiku-4-5',
+  sonnet: 'claude-sonnet-4-6',
+  opus: 'claude-opus-4-8',
+};
+
+/**
  * User-configurable filtering settings, persisted in chrome.storage.sync so they
  * follow the user across devices. Read by the content scripts and the popup UI.
  */
@@ -26,6 +47,21 @@ export interface HiderSettings {
    * the wall and restore scrolling. Defaults to `true`.
    */
   dismissConsent: boolean;
+  /**
+   * Which credential the AI cleanup uses: a BYO API key (`apiKey`) or a Claude
+   * subscription OAuth token (`oauth`). The credentials themselves live in
+   * `chrome.storage.local` (never synced); this is just the selector. Defaults
+   * to `apiKey` (the TASK-014 behavior).
+   */
+  aiAuthMethod: AiAuthMethod;
+  /** Claude model tier for AI cleanup. Defaults to `haiku` (fast/cheap). */
+  aiModel: AiModelTier;
+  /**
+   * When true, AI cleanup captures a screenshot of the visible tab and sends it
+   * to the (multimodal) model alongside the digest, so first-party/native ads a
+   * text-only digest misses can still be flagged. Defaults to off.
+   */
+  aiVision: boolean;
 }
 
 export const DEFAULT_SETTINGS: HiderSettings = {
@@ -77,6 +113,9 @@ export const DEFAULT_SETTINGS: HiderSettings = {
   spoofAntiAdblock: true,
   cosmeticFilters: '',
   dismissConsent: true,
+  aiAuthMethod: 'apiKey',
+  aiModel: 'haiku',
+  aiVision: false,
 };
 
 /**
@@ -85,7 +124,7 @@ export const DEFAULT_SETTINGS: HiderSettings = {
  */
 export const settingsItem = storage.defineItem<HiderSettings>('sync:settings', {
   fallback: DEFAULT_SETTINGS,
-  version: 3,
+  version: 4,
   migrations: {
     // v1 -> v2: `cosmeticFilters` was introduced. Existing stored settings have
     // no such field, so default it to '' without touching any other user data.
@@ -102,6 +141,18 @@ export const settingsItem = storage.defineItem<HiderSettings>('sync:settings', {
       ...(old ?? {}),
       cosmeticFilters: old?.cosmeticFilters ?? '',
       dismissConsent: old?.dismissConsent ?? true,
+    }),
+    // v3 -> v4: AI deep-clean settings were introduced (auth method, model tier,
+    // vision). Backfill each to its default for existing users while preserving
+    // every previously-stored field.
+    4: (old: Partial<HiderSettings> | null): HiderSettings => ({
+      ...DEFAULT_SETTINGS,
+      ...(old ?? {}),
+      cosmeticFilters: old?.cosmeticFilters ?? '',
+      dismissConsent: old?.dismissConsent ?? true,
+      aiAuthMethod: old?.aiAuthMethod ?? 'apiKey',
+      aiModel: old?.aiModel ?? 'haiku',
+      aiVision: old?.aiVision ?? false,
     }),
   },
 });
@@ -156,6 +207,18 @@ export function parseSettings(json: string): HiderSettings {
     if (typeof v !== 'string') throw new Error(`"${key}" must be a string.`);
     return v;
   };
+  const enumStr = <T extends string>(
+    key: keyof HiderSettings,
+    allowed: readonly T[],
+    fallback: T,
+  ): T => {
+    const v = obj[key];
+    if (v === undefined) return fallback;
+    if (typeof v !== 'string' || !allowed.includes(v as T)) {
+      throw new Error(`"${key}" must be one of: ${allowed.join(', ')}.`);
+    }
+    return v as T;
+  };
 
   return {
     enabled: bool('enabled', DEFAULT_SETTINGS.enabled),
@@ -170,6 +233,17 @@ export function parseSettings(json: string): HiderSettings {
     ),
     cosmeticFilters: str('cosmeticFilters', DEFAULT_SETTINGS.cosmeticFilters),
     dismissConsent: bool('dismissConsent', DEFAULT_SETTINGS.dismissConsent),
+    aiAuthMethod: enumStr<AiAuthMethod>(
+      'aiAuthMethod',
+      ['apiKey', 'oauth'],
+      DEFAULT_SETTINGS.aiAuthMethod,
+    ),
+    aiModel: enumStr<AiModelTier>(
+      'aiModel',
+      ['haiku', 'sonnet', 'opus'],
+      DEFAULT_SETTINGS.aiModel,
+    ),
+    aiVision: bool('aiVision', DEFAULT_SETTINGS.aiVision),
   };
 }
 
@@ -180,3 +254,13 @@ export function parseSettings(json: string): HiderSettings {
 export const apiKeyItem = storage.defineItem<string>('local:anthropicApiKey', {
   fallback: '',
 });
+
+/**
+ * Claude subscription OAuth access token for the on-demand AI cleanup feature.
+ * Like {@link apiKeyItem}, stored in `local` (NOT `sync`) so the secret is never
+ * synced across devices. Used only when `aiAuthMethod === 'oauth'`.
+ */
+export const oauthTokenItem = storage.defineItem<string>(
+  'local:anthropicOauthToken',
+  { fallback: '' },
+);

@@ -9,6 +9,9 @@ const base: HiderSettings = {
   spoofAntiAdblock: false,
   cosmeticFilters: '',
   dismissConsent: true,
+  aiAuthMethod: 'apiKey',
+  aiModel: 'haiku',
+  aiVision: false,
 };
 
 beforeEach(() => {

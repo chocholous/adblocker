@@ -24,6 +24,12 @@ export interface PageDigest {
   url: string;
   title: string;
   viewport: [number, number];
+  /**
+   * Device pixel ratio of the captured tab. Vision mode sends a screenshot whose
+   * pixel dimensions are `viewport * dpr`; this lets the model relate the image
+   * to each node's CSS-pixel `rect`. Omitted/1 when not relevant.
+   */
+  dpr?: number;
   nodes: DigestNode[];
 }
 
@@ -87,16 +93,21 @@ export interface MatchResourcesResponse {
   matched: number[];
 }
 
-/** Result the popup receives back from the content script. */
-export type CleanupResult = DetectResponse;
-
 // Runtime message envelopes.
-export interface DetectMessage {
-  type: 'sch:detect';
-  digest: PageDigest;
+
+/**
+ * Popup → background: run the AI cleanup for a tab. Sent from the popup (which
+ * holds the user gesture needed for `chrome.tabs.captureVisibleTab` in vision
+ * mode) rather than from the content frame.
+ */
+export interface CleanupRequestMessage {
+  type: 'sch:cleanupRequest';
+  tabId: number;
 }
-export interface CleanupMessage {
-  type: 'sch:cleanup';
+/** Popup → content (top frame): preview-hide a set of selectors (unsaved). */
+export interface PreviewMessage {
+  type: 'sch:preview';
+  selectors: string[];
 }
 export interface ClearPreviewMessage {
   type: 'sch:clearPreview';
@@ -105,10 +116,21 @@ export interface ClearPreviewMessage {
 export interface StartPickerMessage {
   type: 'sch:startPicker';
 }
+/** Background → content (top frame): build and return a page digest. */
+export interface BuildDigestMessage {
+  type: 'sch:buildDigest';
+}
+
+/** Content's reply to {@link BuildDigestMessage}. */
+export type BuildDigestResponse =
+  | { ok: true; digest: PageDigest }
+  | { ok: false; error: string };
+
 export type RuntimeMessage =
-  | DetectMessage
-  | CleanupMessage
+  | CleanupRequestMessage
+  | PreviewMessage
   | ClearPreviewMessage
   | StartPickerMessage
+  | BuildDigestMessage
   | EngineCosmeticsMessage
   | MatchResourcesMessage;

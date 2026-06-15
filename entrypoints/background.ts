@@ -1,19 +1,25 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
-import { settingsItem, apiKeyItem } from '@/lib/settings';
-import { detectElementsToHide } from '@/lib/anthropic';
+import { settingsItem, apiKeyItem, oauthTokenItem } from '@/lib/settings';
+import {
+  detectElementsToHide,
+  type Screenshot,
+  type ScreenshotMediaType,
+  type DetectOptions,
+} from '@/lib/anthropic';
 import {
   loadEngine,
   cosmeticsForFrame,
   matchResourcesForFrame,
 } from '@/lib/engine';
 import type {
+  BuildDigestResponse,
+  CleanupRequestMessage,
   DetectResponse,
   EngineCosmeticsMessage,
   EngineCosmeticsResponse,
   MatchResourcesMessage,
   MatchResourcesResponse,
-  PageDigest,
   RuntimeMessage,
 } from '@/lib/detect';
 
@@ -34,8 +40,8 @@ export default defineBackground(() => {
 
   browser.runtime.onMessage.addListener((message: unknown) => {
     const msg = message as RuntimeMessage | undefined;
-    if (msg?.type === 'sch:detect') {
-      return handleDetect(msg.digest);
+    if (msg?.type === 'sch:cleanupRequest') {
+      return handleCleanupRequest(msg);
     }
     if (msg?.type === 'sch:engineCosmetics') {
       return handleEngineCosmetics(msg);
@@ -85,16 +91,89 @@ async function handleEngineCosmetics(
   }
 }
 
-async function handleDetect(digest: PageDigest): Promise<DetectResponse> {
-  const apiKey = await apiKeyItem.getValue();
-  if (!apiKey) {
+/**
+ * Capture the visible tab as an image for vision mode. Returns `undefined` on
+ * any failure (the caller degrades to the text-only path). `captureVisibleTab`
+ * relies on the activeTab grant from the popup's user gesture.
+ */
+async function captureScreenshot(): Promise<Screenshot | undefined> {
+  try {
+    // JPEG keeps the payload small; quality is plenty for ad-region detection.
+    // Single-argument form captures the current window's active visible tab.
+    const dataUrl = await browser.tabs.captureVisibleTab({
+      format: 'jpeg',
+      quality: 70,
+    });
+    const match = /^data:(image\/[a-z]+);base64,(.*)$/.exec(dataUrl ?? '');
+    if (!match || !match[1] || match[2] === undefined) return undefined;
+    return {
+      mediaType: match[1] as ScreenshotMediaType,
+      data: match[2],
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Orchestrate one AI cleanup: ask the content frame for a digest, optionally
+ * capture a screenshot for vision mode, select the credential for the chosen
+ * auth method, and call the model. All privileged work (capture + API call)
+ * happens here in the background SW, never in the page.
+ */
+async function handleCleanupRequest(
+  msg: CleanupRequestMessage,
+): Promise<DetectResponse> {
+  const settings = await settingsItem.getValue();
+
+  // Resolve the credential for the selected auth method up front so a missing
+  // credential is a clear error before we do any work.
+  const credential =
+    settings.aiAuthMethod === 'oauth'
+      ? await oauthTokenItem.getValue()
+      : await apiKeyItem.getValue();
+  if (!credential) {
     return {
       ok: false,
-      error: 'No Anthropic API key set. Add your key in the popup first.',
+      error:
+        settings.aiAuthMethod === 'oauth'
+          ? 'No Claude subscription token set. Paste your OAuth token in the popup first.'
+          : 'No Anthropic API key set. Add your key in the popup first.',
     };
   }
+
+  // Build the digest in the page's top frame.
+  let digestRes: BuildDigestResponse | undefined;
   try {
-    const rules = await detectElementsToHide(apiKey, digest);
+    digestRes = (await browser.tabs.sendMessage(msg.tabId, {
+      type: 'sch:buildDigest',
+    })) as BuildDigestResponse | undefined;
+  } catch {
+    return {
+      ok: false,
+      error: "This page can't be cleaned up (no content script).",
+    };
+  }
+  if (!digestRes?.ok) {
+    return {
+      ok: false,
+      error: digestRes?.error ?? 'Could not analyze this page.',
+    };
+  }
+
+  // Capture a screenshot only in vision mode. If capture fails, we degrade to
+  // the text path rather than aborting the whole cleanup.
+  const screenshot = settings.aiVision ? await captureScreenshot() : undefined;
+
+  const options: DetectOptions = {
+    authMethod: settings.aiAuthMethod,
+    credential,
+    model: settings.aiModel,
+    screenshot,
+  };
+
+  try {
+    const rules = await detectElementsToHide(options, digestRes.digest);
     return { ok: true, rules };
   } catch (error) {
     return {
