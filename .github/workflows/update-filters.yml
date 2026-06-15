@@ -1,0 +1,39 @@
+name: Update filter lists
+
+# Weekly refresh of the bundled filter engine (public/filter-engine.bin) from
+# the upstream lists in scripts/build-filters.mjs. Opens a PR only if anything
+# changed; the normal CI gate + e2e then validate it before merge.
+on:
+  schedule:
+    - cron: '17 4 * * 1' # Mondays 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Rebuild filter engine from latest upstream lists
+        run: npm run build:filters
+      - name: Open PR if the engine changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: public/filter-engine.bin
+          branch: chore/filter-list-refresh
+          delete-branch: true
+          title: 'chore: refresh bundled filter lists'
+          commit-message: 'chore: refresh bundled filter-engine.bin from upstream lists'
+          body: |
+            Automated weekly refresh of the bundled `public/filter-engine.bin`
+            from upstream filter lists (see `scripts/build-filters.mjs`).
+
+            CI gate + E2E validate this PR before merge.
