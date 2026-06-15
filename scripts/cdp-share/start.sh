@@ -16,7 +16,15 @@ cd "$ROOT"
 CDP_UPSTREAM_PORT="${CDP_UPSTREAM_PORT:-9222}"
 CDP_PROXY_PORT="${CDP_PROXY_PORT:-9223}"
 CDP_SECRET="${CDP_SECRET:-$(openssl rand -hex 16)}"
-CHROME_BIN="${CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+# IMPORTANT: do NOT default to the system "Google Chrome" — on managed machines
+# (enterprise MDM) it silently refuses to load unpacked extensions, so the plugin
+# never actually runs. Use Playwright's bundled "Chrome for Testing", which is not
+# subject to those policies. Override with CHROME_BIN if you know yours is unmanaged.
+CHROME_BIN="${CHROME_BIN:-$(node -e "console.log(require('playwright').chromium.executablePath())" 2>/dev/null)}"
+if [ -z "$CHROME_BIN" ] || [ ! -x "$CHROME_BIN" ]; then
+  echo "Chrome for Testing not found — run: npx playwright install chromium" >&2
+  exit 1
+fi
 EXT_DIR="$ROOT/.output/chrome-mv3"
 PROFILE_DIR="$ROOT/.cdp-profile"
 LOG_DIR="$ROOT/.cdp-logs"
@@ -43,7 +51,7 @@ echo "==> Launching Chrome (CDP :$CDP_UPSTREAM_PORT, unpacked extension)"
   --load-extension="$EXT_DIR" \
   --disable-extensions-except="$EXT_DIR" \
   --no-first-run --no-default-browser-check \
-  --disable-features=DialMediaRouteProvider \
+  --disable-features=DisableLoadExtensionCommandLineSwitch,DialMediaRouteProvider \
   about:blank >"$LOG_DIR/chrome.log" 2>&1 &
 PIDS+=("$!")
 

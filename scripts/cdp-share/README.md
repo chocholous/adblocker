@@ -26,7 +26,14 @@ https://<random>.trycloudflare.com/<secret>
 | `CDP_UPSTREAM_PORT` | `9222`                        | Chrome `--remote-debugging-port` |
 | `CDP_PROXY_PORT`    | `9223`                        | local proxy port                 |
 | `CDP_SECRET`        | auto (`openssl rand -hex 16`) | shared secret = URL path gate    |
-| `CHROME_BIN`        | macOS Google Chrome           | Chrome binary                    |
+| `CHROME_BIN`        | Playwright Chrome for Testing | Chrome binary                    |
+
+> **Do not use the system Google Chrome on a managed (enterprise/MDM) machine** —
+> its policy silently blocks unpacked extensions, so `--load-extension` is ignored
+> and the plugin never runs (no error shown; `chrome://extensions` just stays
+> empty and shows "managed by your organisation"). The harness defaults to
+> Playwright's bundled **Chrome for Testing**, which is unmanaged. Run
+> `npx playwright install chromium` once if it's missing.
 
 > The public URL **and** the secret change on every restart (quick tunnel is
 > ephemeral). Re-share the printed endpoint with the cloud session each time, or
