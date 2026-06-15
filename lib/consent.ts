@@ -5,16 +5,12 @@
  *  1. First try to REJECT — click a "reject all / decline / only necessary"
  *     control. This is the privacy-preserving outcome and also dismisses the
  *     wall.
- *  2. Pay-or-Consent EXCEPTION: if there is no reject control AND the wall
- *     offers a paid subscription as the only alternative to accepting tracking
- *     (the German "Pur" / "Pay or OK" model), click ACCEPT-ALL — it is the only
- *     free way to read the page, and we still hide the ads after load.
- *  3. Otherwise HIDE the wall and UNLOCK scrolling so the page underneath is
- *     usable. Never leave a consent wall blocking.
+ *  2. If no reject control can be found, HIDE the wall and UNLOCK scrolling so
+ *     the page underneath is usable. Never leave a consent wall blocking.
  *
- * Many CMPs (e.g. Sourcepoint) render their dialog in a cross-origin iframe, so
- * besides the top frame we also run inside vetted CMP iframes (see
- * {@link runConsentHandlerInFrame}); there we click but never hide.
+ * Some CMPs (e.g. Sourcepoint) render their dialog in a cross-origin iframe, so
+ * besides the top frame we also run a REJECT-only pass inside vetted CMP iframes
+ * (see {@link runConsentHandlerInFrame}); there we click reject but never hide.
  *
  * Hard requirement: ZERO false-positives. We must never click an unrelated
  * "Reject" button or hide real page content. Every action is gated behind a
@@ -73,36 +69,6 @@ const REJECT_SELECTORS: readonly string[] = [
  */
 const REJECT_TEXT_RE =
   /\b(reject all|reject|decline|refuse|disagree|deny|only necessary|necessary only)\b|odm[ií]t(nout|am)?(\s+v[šs]e)?|nesouhlas[ií]?m?|zam[ií]tnout|(jen|pouze)\s+nezbytn|ablehnen|nur notwendige/i;
-
-/**
- * Accept-ALL controls for the Pay-or-Consent exception (see {@link tryAcceptPayWall}).
- * High-precision CMP selectors for the "accept everything" button.
- */
-const ACCEPT_SELECTORS: readonly string[] = [
-  '.sp_choice_type_11', // Sourcepoint "accept all"
-  '.sp_choice_type_ACCEPT_ALL',
-  '#onetrust-accept-btn-handler',
-  '#didomi-notice-agree-button',
-  'button[data-testid="uc-accept-all-button"]',
-  '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
-  '#CybotCookiebotDialogBodyButtonAccept',
-  'button[aria-label*="accept all" i]',
-  'button[title*="akzeptieren" i]',
-];
-
-/** Accept-all text matcher (EN/DE/CZ/PL/SK). Used only inside a consent scope. */
-const ACCEPT_TEXT_RE =
-  /\b(accept all|allow all|agree to all|accept|i agree|agree)\b|alle akzeptieren|akzeptieren|souhlas[ií]m|p[řr]ijmout(\s+v[šs]e)?|zaakceptuj(\s+wszystko)?|akceptuj[eę]?|prija[tť](\s+v[šs]etky)?|s[úu]hlas[ií]m/i;
-
-/**
- * Pay-or-Consent signal: a control offering a PAID subscription as the
- * alternative to accepting tracking (the German "Pur"/"Pay or OK" model and
- * similar). When this is present and NO reject control exists, accepting is the
- * only free way to read the page — so it is the deliberate exception to the
- * always-reject policy (see {@link tryAcceptPayWall}). EN/DE/CZ/PL/SK.
- */
-const PAYWALL_TEXT_RE =
-  /abonn?ieren|\babo\b|pur-?abo|\bpur\b|subscribe|subscription|p[řr]edplatn|p[řr]edplatit|odeb[ií]rat|prenumerat|abonament|predplatn|zaplatit|\bpremium\b|bez reklam/i;
 
 /**
  * Tokens that mark a node (or its ancestor) as a consent/cookie context.
@@ -426,52 +392,6 @@ function tryReject(consentFrame = false): boolean {
   return false;
 }
 
-/** Does this scope offer a PAID subscription as an alternative to consenting? */
-function hasPayOption(scope: ParentNode): boolean {
-  for (const ctrl of controlsIn(scope)) {
-    if (PAYWALL_TEXT_RE.test(controlLabel(ctrl))) return true;
-  }
-  return false;
-}
-
-/** Find an accept-ALL control inside a scope (selector first, then text). */
-function findAcceptControl(scope: ParentNode): Element | null {
-  for (const sel of ACCEPT_SELECTORS) {
-    let el: Element | null;
-    try {
-      el = scope.querySelector(sel);
-    } catch {
-      continue;
-    }
-    if (el && isVisible(el)) return el;
-  }
-  for (const ctrl of controlsIn(scope)) {
-    // Don't treat a reject/subscribe control as "accept".
-    const label = controlLabel(ctrl);
-    if (REJECT_TEXT_RE.test(label) || PAYWALL_TEXT_RE.test(label)) continue;
-    if (ACCEPT_TEXT_RE.test(label)) return ctrl;
-  }
-  return null;
-}
-
-/**
- * Pay-or-Consent EXCEPTION to always-reject. When a wall offers a paid
- * subscription as the alternative to accepting tracking AND exposes no reject
- * control, accepting is the only free way to read the page — so we click
- * accept-all. Deliberately gated: only fires when (a) a pay/subscribe control is
- * present and (b) an accept-all control is present, inside a consent scope. We
- * still hide the ads after load, so the user gets free, ad-free content.
- * Only call this AFTER {@link tryReject} has failed.
- */
-function tryAcceptPayWall(consentFrame = false): boolean {
-  for (const scope of consentScopes(consentFrame)) {
-    if (!hasPayOption(scope)) continue;
-    const accept = findAcceptControl(scope);
-    if (accept && clickOnce(accept)) return true;
-  }
-  return false;
-}
-
 /**
  * Hide every detected consent overlay/dialog and restore scrolling. Only hides
  * nodes that pass the consent-context check, so generic content is never hidden.
@@ -570,9 +490,8 @@ interface HandleOptions {
 
 /**
  * One handling pass. Order: (1) REJECT (privacy-preserving, the default), then
- * (2) the Pay-or-Consent ACCEPT exception (only when a paid alternative exists
- * and no reject does), then (3) hide+unlock as a last resort. Returns true if a
- * consent wall was acted upon.
+ * (2) hide+unlock as a last resort (top frame only). Returns true if a consent
+ * wall was acted upon.
  */
 function handleOnce(opts: HandleOptions = {}): boolean {
   const { consentFrame = false, allowHide = true } = opts;
@@ -580,10 +499,6 @@ function handleOnce(opts: HandleOptions = {}): boolean {
     if (tryReject(consentFrame)) {
       // A reject click usually makes the CMP remove its own overlay and restore
       // scrolling, but some leave scroll-locks behind — unlock anyway.
-      restoreScrolling();
-      return true;
-    }
-    if (tryAcceptPayWall(consentFrame)) {
       restoreScrolling();
       return true;
     }
@@ -642,7 +557,7 @@ function startHandling(opts: HandleOptions): void {
   }
 }
 
-/** Top-frame entry point: reject → accept-paywall → hide. */
+/** Top-frame entry point: reject → hide. */
 export function runConsentHandler(): void {
   startHandling({ consentFrame: false, allowHide: true });
 }
@@ -650,8 +565,8 @@ export function runConsentHandler(): void {
 /**
  * CMP-iframe entry point (e.g. Sourcepoint's cross-origin message frame). The
  * caller has vetted the frame URL as a CMP, so the frame is the consent context.
- * We click (reject, else accept the pay-or-consent wall) but never hide — the
- * host page owns the iframe and a successful click makes the CMP remove it.
+ * We click a REJECT control but never hide — the host page owns the iframe and a
+ * successful reject makes the CMP remove it.
  */
 export function runConsentHandlerInFrame(): void {
   startHandling({ consentFrame: true, allowHide: false });
@@ -660,9 +575,6 @@ export function runConsentHandlerInFrame(): void {
 /** Exported for unit tests only. */
 export const __test = {
   tryReject,
-  tryAcceptPayWall,
-  hasPayOption,
-  findAcceptControl,
   hideAndUnlock,
   handleOnce,
   restoreScrolling,
