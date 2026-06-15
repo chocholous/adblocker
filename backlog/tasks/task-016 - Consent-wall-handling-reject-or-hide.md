@@ -1,11 +1,11 @@
 ---
 id: TASK-016
 title: Consent wall handling (reject or hide)
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-06-14 20:13'
-updated_date: '2026-06-14 20:13'
+updated_date: '2026-06-15 10:01'
 labels:
   - engine
 dependencies: []

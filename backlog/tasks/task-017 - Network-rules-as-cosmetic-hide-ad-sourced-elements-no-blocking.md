@@ -1,11 +1,11 @@
 ---
 id: TASK-017
 title: 'Network-rules-as-cosmetic (hide ad-sourced elements, no blocking)'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-06-15 08:59'
-updated_date: '2026-06-15 09:08'
+updated_date: '2026-06-15 10:01'
 labels:
   - engine
 dependencies: []
