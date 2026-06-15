@@ -88,7 +88,9 @@ const CZ = [
   { url: 'https://www.mojedatovaschranka.cz/', kind: 'clean' },
 ];
 
-const corpusJson = JSON.parse(readFileSync(resolve(here, 'corpus.json'), 'utf8'));
+const corpusJson = JSON.parse(
+  readFileSync(resolve(here, 'corpus.json'), 'utf8'),
+);
 
 function targets() {
   // Explicit URL list (e.g. re-running a previous run's timed-out sites).
@@ -234,7 +236,9 @@ async function findArticleLinks(page, n) {
       const score = (a) => {
         const h = a.getAttribute('href') || '';
         let s = 0;
-        if (/\/clanek\/|\/zpravy\/|\/article|\/news\/|-\d{5,}|\/\d{4}\//i.test(h))
+        if (
+          /\/clanek\/|\/zpravy\/|\/article|\/news\/|-\d{5,}|\/\d{4}\//i.test(h)
+        )
           s += 3;
         if ((a.textContent || '').trim().length > 25) s += 1;
         const r = a.getBoundingClientRect();
@@ -284,11 +288,18 @@ async function visit(page, url, label, errors, shotsDir) {
   if (!m.error) {
     if (m.textLen < 200 && !m.errish) m.flags.push('CRITICAL_BLANK');
     else if (m.textLen < 800 && !m.errish) m.flags.push('LOW_TEXT');
-    if (m.landmarks && m.landmarks.article && m.landmarks.article.present === false && /clanek|article|\/\d{4}\//i.test(url) && label !== 'landing') {
+    if (
+      m.landmarks &&
+      m.landmarks.article &&
+      m.landmarks.article.present === false &&
+      /clanek|article|\/\d{4}\//i.test(url) &&
+      label !== 'landing'
+    ) {
       // articles should have an <article> or substantial text
     }
     if (m.adCount > 0) m.flags.push('AD_GAP');
-    if (m.consentVisible && m.consentVisible.length) m.flags.push('CONSENT_WALL');
+    if (m.consentVisible && m.consentVisible.length)
+      m.flags.push('CONSENT_WALL');
     if (m.redirected && /cmp\.|consent|souhlas/i.test(m.url))
       m.flags.push('CONSENT_REDIRECT');
   } else {
@@ -312,15 +323,11 @@ async function processSite(context, site, shotsDir) {
   page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push(msg.text().slice(0, 200));
   });
-  page.on('pageerror', (e) => errors.push('pageerror: ' + String(e).slice(0, 200)));
+  page.on('pageerror', (e) =>
+    errors.push('pageerror: ' + String(e).slice(0, 200)),
+  );
   try {
-    const landing = await visit(
-      page,
-      site.url,
-      'landing',
-      errors,
-      shotsDir,
-    );
+    const landing = await visit(page, site.url, 'landing', errors, shotsDir);
     out.pages.push(landing);
 
     let links = [];
@@ -373,9 +380,7 @@ async function runPool(context, sites, shotsDir) {
         const myIdx = ++idx;
         active++;
         const t0 = Date.now();
-        process.stdout.write(
-          `[start ${myIdx}/${sites.length}] ${site.url}\n`,
-        );
+        process.stdout.write(`[start ${myIdx}/${sites.length}] ${site.url}\n`);
         processSite(context, site, shotsDir)
           .then((r) => {
             r.ms = Date.now() - t0;
@@ -385,8 +390,16 @@ async function runPool(context, sites, shotsDir) {
             );
           })
           .catch((e) => {
-            results.push({ url: site.url, kind: site.kind, error: String(e.message || e), flags: ['NAV_ERROR'], pages: [] });
-            console.log(`[done  ${myIdx}/${sites.length}] ${site.url} :: ERROR`);
+            results.push({
+              url: site.url,
+              kind: site.kind,
+              error: String(e.message || e),
+              flags: ['NAV_ERROR'],
+              pages: [],
+            });
+            console.log(
+              `[done  ${myIdx}/${sites.length}] ${site.url} :: ERROR`,
+            );
           })
           .finally(() => {
             active--;
@@ -489,7 +502,10 @@ async function main() {
     results,
     adHosts: aggregateHosts(results),
   };
-  writeFileSync(resolve(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
+  writeFileSync(
+    resolve(OUT_DIR, 'report.json'),
+    JSON.stringify(report, null, 2),
+  );
   writeFileSync(resolve(OUT_DIR, 'report.md'), renderMd(report));
   console.log(`\n[deep] wrote ${OUT_DIR}/report.json and report.md`);
   console.log('\n' + renderMd(report));
