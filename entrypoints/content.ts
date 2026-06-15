@@ -6,7 +6,7 @@ import { parseCosmeticFilters, selectorsForHostname } from '@/lib/filterlist';
 import { collectDomHints } from '@/lib/dom-hints';
 import { buildPageDigest } from '@/lib/digest';
 import { serveSpoofConfig } from '@/lib/bridge';
-import { runConsentHandler } from '@/lib/consent';
+import { runConsentHandler, runConsentHandlerInFrame } from '@/lib/consent';
 import { runHidePass, type CollectedResource } from '@/lib/net-hide';
 import { startPicker } from '@/lib/picker';
 import type {
@@ -18,6 +18,19 @@ import type {
 import '@/assets/hider.css';
 
 const PREVIEW_STYLE_ID = 'sch-preview-style';
+
+/**
+ * Does this frame URL look like a CMP's (consent dialog) iframe? Used to decide
+ * whether to run the consent handler in a sub-frame. Scoped to recognizable
+ * consent/CMP vendors and paths so we never run consent logic in arbitrary ad
+ * iframes. Covers Sourcepoint (incl. first-party-proxied hosts like cmp2.*),
+ * the IAB TCF locator, and the major CMP vendors.
+ */
+function isCmpFrameUrl(url: string): boolean {
+  return /sourcepoint|sp-prod|sp_message|privacy-mgmt|message_id=|consensu\.org|__tcfapi|\bcmp\d?\b|cmp\.|\/cmp|consent|didomi|onetrust|cookiebot|usercentrics|trustarc|quantcast|funding[_-]?choices|fundingchoices/i.test(
+    url,
+  );
+}
 
 /**
  * Parse the raw cosmetic-filter text and resolve the selectors (plain-CSS and
@@ -133,13 +146,19 @@ export default defineContentScript({
       hider.startObserver();
     }
 
-    // Consent / cookie (CMP) wall handling. Runs only in the top frame (CMPs
-    // wall the main document, not sub-frames) and only when both the master
-    // switch and the dismissConsent toggle are on. Fully defensive internally,
-    // so a misbehaving page can never break the rest of the content script.
-    if (settings.enabled && settings.dismissConsent && window.top === window) {
+    // Consent / cookie (CMP) wall handling. Gated on the master switch and the
+    // dismissConsent toggle. In the TOP frame we run the full handler (reject →
+    // accept pay-or-consent → hide). Many CMPs (Sourcepoint, …) render their
+    // dialog in a cross-origin IFRAME, so we also run inside frames whose URL is
+    // recognizably a CMP — there we click but never hide. Fully defensive so a
+    // misbehaving page can never break the rest of the content script.
+    if (settings.enabled && settings.dismissConsent) {
       try {
-        runConsentHandler();
+        if (window.top === window) {
+          runConsentHandler();
+        } else if (isCmpFrameUrl(location.href)) {
+          runConsentHandlerInFrame();
+        }
       } catch {
         // never let consent handling abort the rest of setup
       }

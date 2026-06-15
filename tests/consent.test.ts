@@ -5,6 +5,7 @@ import { settingsItem, DEFAULT_SETTINGS } from '../lib/settings';
 
 const {
   handleOnce,
+  tryAcceptPayWall,
   restoreScrolling,
   isConsentContext,
   isHideableWall,
@@ -114,6 +115,63 @@ describe('consent handler — reject path', () => {
     handleOnce();
     handleOnce();
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('consent handler — Pay-or-Consent accept exception', () => {
+  // A Sourcepoint-style "Pur" wall: accept-all OR paid subscription, NO reject.
+  const PUR_WALL = `
+    <div class="message-container" role="dialog" aria-label="Privacy">
+      <p>We value your privacy. Accept all cookies or subscribe.</p>
+      <button class="sp_choice_type_11" title="Alle akzeptieren">Alle akzeptieren</button>
+      <button class="message-button">Einstellungen</button>
+      <a class="message-button" title="Jetzt PUR abonnieren">Jetzt PUR abonnieren</a>
+    </div>`;
+
+  it('clicks accept-all when the only alternative is a paid subscription', () => {
+    document.body.innerHTML = PUR_WALL;
+    const accept = vi.fn();
+    const sub = vi.fn();
+    document
+      .querySelector('.sp_choice_type_11')!
+      .addEventListener('click', accept);
+    document
+      .querySelector('[title="Jetzt PUR abonnieren"]')!
+      .addEventListener('click', sub);
+    expect(handleOnce()).toBe(true);
+    expect(accept).toHaveBeenCalledTimes(1);
+    expect(sub).not.toHaveBeenCalled(); // never click the paid option
+  });
+
+  it('does NOT accept when a reject control exists (reject wins)', () => {
+    document.body.innerHTML = `
+      <div class="cookie-consent" role="dialog">
+        <p>We value your privacy.</p>
+        <button id="accept">Accept all</button>
+        <button id="reject">Reject all</button>
+        <a title="Subscribe">Subscribe</a>
+      </div>`;
+    const accept = vi.fn();
+    const reject = vi.fn();
+    document.querySelector('#accept')!.addEventListener('click', accept);
+    document.querySelector('#reject')!.addEventListener('click', reject);
+    expect(handleOnce()).toBe(true);
+    expect(reject).toHaveBeenCalledTimes(1);
+    expect(accept).not.toHaveBeenCalled();
+  });
+
+  it('does NOT accept a normal cookie banner with no paid alternative', () => {
+    document.body.innerHTML = `
+      <div class="cookie-banner" role="dialog">
+        <p>We use cookies for your privacy.</p>
+        <button id="accept">Accept all</button>
+      </div>`;
+    const accept = vi.fn();
+    document.querySelector('#accept')!.addEventListener('click', accept);
+    // No reject + no pay option → the accept exception must NOT fire; the wall
+    // is instead hidden by the fallback. So accept stays unclicked.
+    expect(tryAcceptPayWall(false)).toBe(false);
+    expect(accept).not.toHaveBeenCalled();
   });
 });
 
