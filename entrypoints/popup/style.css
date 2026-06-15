@@ -204,3 +204,10 @@ input[type='password'] {
   gap: 8px;
   justify-content: flex-start;
 }
+
+/* Element picker section */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
