@@ -21,6 +21,20 @@ const FIXTURE_HTML = `<!doctype html>
   <div id="banner" data-ad>advertisement</div>
 </body></html>`;
 
+// Network-rules-as-cosmetic fixture: an ad iframe sourced from a known ad host
+// (doubleclick.net, matched by the engine's NETWORK filters) next to a benign
+// first-party iframe and image. The extension must HIDE only the ad-sourced
+// iframe and leave the real content visible — we never block the request, the
+// iframe still loads (or fails to), it just gets display:none afterwards.
+const NET_FIXTURE_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>net fixture</title></head>
+<body>
+  <div id="content">real content</div>
+  <iframe id="ad-frame" src="https://doubleclick.net/ad?slot=1" width="300" height="250"></iframe>
+  <iframe id="real-frame" src="/embed" width="300" height="250"></iframe>
+  <img id="real-img" src="/photo.png" width="200" height="200">
+</body></html>`;
+
 /**
  * Fixtures: a Chromium persistent context with the built extension loaded, and a
  * throwaway local HTTP server (content scripts don't run on file:// by default).
@@ -42,7 +56,28 @@ const test = base.extend<{ context: BrowserContext; baseURL: string }>({
     await context.close();
   },
   baseURL: async ({}, use) => {
-    const server = http.createServer((_req, res) => {
+    const server = http.createServer((req, res) => {
+      const path = (req.url ?? '/').split('?')[0];
+      if (path === '/net') {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(NET_FIXTURE_HTML);
+        return;
+      }
+      if (path === '/embed') {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end('<!doctype html><html><body>local embed</body></html>');
+        return;
+      }
+      if (path === '/photo.png') {
+        // 1x1 transparent PNG so the first-party <img> "loads" without network.
+        const png = Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QPgAAAAAElFTkSuQmCC',
+          'base64',
+        );
+        res.writeHead(200, { 'content-type': 'image/png' });
+        res.end(png);
+        return;
+      }
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end(FIXTURE_HTML);
     });
@@ -91,4 +126,28 @@ test('MAIN world spoofs adsbygoogle (handshake delivered config)', async ({
   });
 
   expect(spoofed).toBe(true);
+});
+
+/**
+ * Network-rules-as-cosmetic: an iframe whose `src` points at an ad host
+ * (doubleclick.net) is matched by the engine's NETWORK filters and HIDDEN after
+ * load, while a benign first-party iframe and image stay visible. This proves
+ * the content↔background matcher path works end-to-end and is conservative
+ * (only the ad-sourced element is hidden — no request blocking).
+ */
+test('hides an ad-sourced iframe, keeps first-party iframe + image', async ({
+  context,
+  baseURL,
+}) => {
+  const page = await context.newPage();
+  await page.goto(`${baseURL}/net`);
+
+  // The hide pass runs async (debounced) after the background matcher replies,
+  // so wait for the ad iframe to be hidden rather than asserting immediately.
+  await expect(page.locator('#ad-frame')).toBeHidden({ timeout: 10000 });
+
+  // Real content is untouched.
+  await expect(page.locator('#content')).toBeVisible();
+  await expect(page.locator('#real-frame')).toBeVisible();
+  await expect(page.locator('#real-img')).toBeVisible();
 });
