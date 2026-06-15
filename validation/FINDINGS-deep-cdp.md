@@ -1,0 +1,77 @@
+# Deep CDP field test — findings & improvement plan
+
+Run: 106 sites (14 CZ + 62 international ad-heavy + 30 clean references), each
+checked **deep** (landing → scroll → open 2 in-domain articles → scroll each)
+over CDP against a real browser with the extension installed/enabled. Driver:
+`validation/deep-cdp.mjs` (worker-pool + queue). Two passes were merged: a
+16-wide pass (fast, but the first wave timed out under contention) and a 6-wide
+gap-fill (`--navtimeout=60000`) that recovered the timed-out sites.
+
+**Result: 105/106 loaded, 73 fully clean, 1 persistent nav failure (gnu.org).**
+
+## True extension false-positives (must fix)
+
+Only **4** real FPs, all the same root cause — the Seznam consent flow:
+
+| Site                                            | Symptom                                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| novinky.cz, sport.cz, seznamzpravy.cz, super.cz | Opening an article redirects to `cmp.seznam.cz/nastaveni-souhlasu`, which renders **blank** |
+
+Root cause (diagnosed live over CDP):
+
+1. On the landing page the Seznam CMP is an in-page iframe. Our consent handler
+   runs **top-frame only**, so it never makes a consent choice — it just hides
+   the overlay. With no decision stored, Seznam **hard-redirects article views**
+   to the dedicated full-page CMP at `cmp.seznam.cz`.
+2. On `cmp.seznam.cz` the wall **is** the whole page. Our handler hid
+   `.szn-cmp-dialog-container` → blank white page. (Independently, Seznam's CMP
+   also fails to populate its own UI there — its scripts load but render nothing,
+   consistent with its own anti-adblock; even un-hidden the dialog is empty.)
+
+**Shipped in this PR (defensive):** consent handler now (a) never hides a wall
+that would blank the page (`wouldBlankPage`, ≥90% of rendered text + <150 chars
+remaining → keep), and (b) won't hide tiny inline links that merely carry a
+consent token (`isHideableWall`, e.g. Seznam footer `a.atm-cmp-link`).
+
+**Follow-up (real fix):** run consent **reject** inside same-origin CMP iframes
+on the landing (`…/html/cmp.html`) so a decision is stored and articles never
+redirect. This is the only way to actually unblock Seznam article reading.
+
+## Remaining ad gaps (filter-improvement targets)
+
+| Site        | Still-visible ads                                                              | Idea                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| aktualne.cz | `*.imedia.cz` Sklik iframes (300×250/300×300), e.g. `c-oa/c-ko/c-ng.imedia.cz` | Strengthen CZ network-as-hide for `imedia.cz` iframe sources; verify EasyList-CZ coverage                                     |
+| super.cz    | first-party `www.super.cz` 300×250 / 300×600 slots                             | Add a super.cz cosmetic rule (current `[class*="ssp-advert"]` misses these — capture the real slot marker)                    |
+| vox.com     | `div#div-gpt-ad-*.dfp_ad--held-area` GPT slots reserving space                 | `[id^="div-gpt-ad"]` matches but the **held-area wrapper** keeps its box; hide `.dfp_ad--held-area` / collapse reserved space |
+
+(foxnews `a.more-subsection-link` and weather.com footer link are measurement
+noise — tiny nav/footer links, not ads.)
+
+## Consent walls still showing (handler-improvement targets)
+
+| Site                 | CMP                                            | Idea                                                                                        |
+| -------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| wikihow.com          | Google Funding Choices (`div.fc-consent-root`) | Add FC reject ("Do not consent" / "Manage options")                                         |
+| denik.cz             | Didomi (`body.didomi-popup-open`)              | Our Didomi reject didn't fire on landing (self-resolved on articles); revisit selector/text |
+| foxnews.com, vox.com | site CMP                                       | Add reject selectors                                                                        |
+
+(techradar/pcgamer "consent" = the Future plc **newsletter** `input#emailInput`,
+not a CMP — a newsletter-hide candidate, not consent.)
+
+## Harness notes
+
+- 16-wide overwhelms a single laptop browser → first-wave nav timeouts (mislabeled
+  as clean until fixed). 6-wide + 60 s timeout is the sweet spot; 0-page sites are
+  now flagged `NAV_ERROR`.
+- `CRITICAL_BLANK` (text < 200) over-flags naturally-short/SPA pages
+  (example.com=127 chars, openstreetmap=96, archive.org SPA, latimes bot-wall).
+  Treat `CRITICAL_BLANK` as a real FP **only** when paired with `CONSENT_REDIRECT`
+  or on a known content site; otherwise it's a measurement artifact.
+
+## Zero-FP confirmation
+
+73 sites fully clean, including every developer/reference site (mozilla, github,
+stackoverflow, gov.uk, nasa, wikipedia, python, nodejs, debian, postgresql, …)
+and most ad-heavy news/recipe/tech sites (idnes, blesk, theguardian, theverge,
+tomshardware, healthline, foodnetwork, …). No content removed on any of them.
