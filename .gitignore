@@ -27,3 +27,9 @@ playwright-report/
 
 # Claude Code local dir (settings, agent worktrees) — never versioned
 .claude/
+
+# Shared-CDP harness runtime state (scripts/cdp-share)
+.cdp-profile/
+.cdp-logs/
+.cdp-relay/
+scripts/cdp-share/endpoints.local.env
