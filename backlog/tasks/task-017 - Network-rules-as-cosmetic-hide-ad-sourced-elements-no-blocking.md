@@ -1,11 +1,11 @@
 ---
 id: TASK-017
 title: 'Network-rules-as-cosmetic (hide ad-sourced elements, no blocking)'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-06-15 08:59'
-updated_date: '2026-06-15 09:08'
+updated_date: '2026-06-15 10:02'
 labels:
   - engine
 dependencies: []
@@ -20,8 +20,10 @@ Use the engine's network filters to hide elements whose resources load from ad/t
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Elements sourced from ad/tracker domains are hidden after load (no request blocking); first-party content untouched; gate+e2e green; 0 clean-corpus false-positives
+- [x] #1 Elements sourced from ad/tracker domains are hidden after load (no request blocking); first-party content untouched; gate+e2e green; 0 clean-corpus false-positives
 <!-- AC:END -->
+
+
 
 ## Implementation Plan
 

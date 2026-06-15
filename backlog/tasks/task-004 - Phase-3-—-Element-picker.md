@@ -1,9 +1,11 @@
 ---
 id: TASK-004
 title: Phase 3 — Element picker
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-06-14 12:45'
+updated_date: '2026-06-15 10:01'
 labels:
   - phase-3
   - ux

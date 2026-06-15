@@ -1,11 +1,11 @@
 ---
 id: TASK-016
 title: Consent wall handling (reject or hide)
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-06-14 20:13'
-updated_date: '2026-06-14 20:13'
+updated_date: '2026-06-15 10:02'
 labels:
   - engine
 dependencies: []
@@ -20,8 +20,10 @@ Always reject consent/CMP walls; hide + unlock scroll as fallback. Zero false-po
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Consent walls are rejected when possible, else hidden with scrolling restored; no clean-site false-positives; gate+e2e green
+- [x] #1 Consent walls are rejected when possible, else hidden with scrolling restored; no clean-site false-positives; gate+e2e green
 <!-- AC:END -->
+
+
 
 ## Implementation Plan
 
