@@ -190,9 +190,12 @@ const MEASURE_FN = `(() => {
   for (const sel of CONSENT_SELECTORS) {
     let nodes; try { nodes = document.querySelectorAll(sel); } catch { continue; }
     for (const el of nodes) {
+      // Skip inline links/controls (e.g. a footer "Nastaveni cookies" link such
+      // as a.atm-cmp-link) — a real wall is a large structural block, not a link.
+      if (['A','BUTTON','SPAN','LABEL','LI'].includes(el.tagName)) continue;
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
-      const shown = s.display!=='none' && s.visibility!=='hidden' && r.width*r.height>2000;
+      const shown = s.display!=='none' && s.visibility!=='hidden' && r.width*r.height>20000;
       if (shown) { consent.push(desc(el)); break; }
     }
   }

@@ -84,3 +84,21 @@ not a CMP — a newsletter-hide candidate, not consent.)
 stackoverflow, gov.uk, nasa, wikipedia, python, nodejs, debian, postgresql, …)
 and most ad-heavy news/recipe/tech sites (idnes, blesk, theguardian, theverge,
 tomshardware, healthline, foodnetwork, …). No content removed on any of them.
+
+## Verification (after fixes, live over CDP)
+
+Re-ran the improvement targets against the rebuilt extension:
+
+| Site        | Before                 | After          |
+| ----------- | ---------------------- | -------------- |
+| aktualne.cz | AD_GAP (imedia Sklik)  | **clean**      |
+| vox.com     | AD_GAP (dfp held-area) | **clean** (3p) |
+| denik.cz    | CONSENT_WALL (Didomi)  | **clean** (3p) |
+| wikihow.com | CONSENT_WALL (GFC)     | **clean**      |
+| techradar   | (newsletter, mis-read) | **clean** (3p) |
+| idnes/blesk | clean                  | **clean** (3p) |
+
+Remaining (both expected): novinky/sport landing flag a footer `a.atm-cmp-link`
+link, which the FP fix now correctly **keeps visible** (the harness over-reports
+it — consent detection has since been tightened to ignore inline links);
+novinky/sport/super articles still hit the **site-side** `cmp.seznam.cz` blank.
