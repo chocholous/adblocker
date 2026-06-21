@@ -25,7 +25,7 @@ jobs:
       - name: Rebuild filter engine from latest upstream lists
         run: npm run build:filters
       - name: Open PR if the engine changed
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           add-paths: public/filter-engine.bin
           branch: chore/filter-list-refresh
